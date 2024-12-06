@@ -1,0 +1,21 @@
+ .errorButton {
+     position: absolute;
+     left: 50%;
+     transform: translateX(-50%);
+ }
+
+ .warningButton1 {
+     position: absolute;
+     width: 7%;
+     height: 5%;
+     left: 40%;
+     transform: translateX(-50%);
+ }
+
+ .warningButton2 {
+     position: absolute;
+     width: 7%;
+     height: 5%;
+     right: 40%;
+     transform: translateX(+50%);
+ }

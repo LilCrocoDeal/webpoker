@@ -1,0 +1,48 @@
+.container_edit {
+    display: flex;
+    flex-direction: row;
+    gap: 5vw; /* Расстояние между столбцами */
+    margin-left: 5%;
+    margin-right: 5%;
+    margin-top: 5%;
+}
+
+.column_edit {
+    display: flex;
+    flex-direction: column;
+    justify-content: center; /* Выравнивание по центру */
+    width: 30%;
+    object-fit: cover;
+}
+
+.icon_edit {
+    width: 100%;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    overflow: hidden;
+    position: relative;
+    left: 50%;
+    transform: translateX(-50%);
+    justify-content: center;
+    align-items: center;
+    border: 5px solid #878a8d;
+    margin-bottom: 5vh;
+}
+
+.icon_edit img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover; /* Сохранение пропорций изображения */
+}
+
+.icon_edit.selected {
+    border: 10px solid #000000;
+}
+
+.button_edit {
+    position: absolute;
+    bottom: 1%;
+    left: 50%;
+    transform: translateX(-50%);
+}
+

@@ -1,0 +1,25 @@
+.returnButton_game {
+    width: 3vw;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    background-color: #878a8d;
+    border: 2px solid #000000;
+    position: absolute;
+    top: 1vw;
+    left: 1vw;
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    cursor: pointer;
+    z-index: 9999;
+}
+
+.returnButton_game::before {
+    content: '🡸';
+    font-size: 1.5vw;
+    color: white;
+}
+
+.returnButton_game:hover {
+    background-color: #545557;
+}

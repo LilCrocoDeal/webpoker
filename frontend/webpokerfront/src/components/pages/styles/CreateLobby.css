@@ -1,0 +1,31 @@
+.box_lobbies {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+}
+
+.bordered_lobbies {
+    background-color: lightgray;
+    font-size: medium;
+    font-family: cursive;
+    padding: 2%;
+    width: 50vw;
+}
+
+.lobbiesButton1 {
+    font-size: medium;
+    width: 15vw;
+    height: 5vh;
+    position: absolute;
+    bottom: 5%;
+    left: 15%;
+}
+
+.lobbiesButton2 {
+    font-size: medium;
+    width: 15vw;
+    height: 5vh;
+    position: absolute;
+    bottom: 5%;
+    right: 15%;
+}

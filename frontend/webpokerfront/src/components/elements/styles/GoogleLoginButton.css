@@ -1,0 +1,34 @@
+.google-login-link {
+    position: absolute;
+    display: inline-flex; /* Размещает элементы в строку */
+    text-decoration: none; /* Убирает подчеркивание */
+    justify-content: center;
+    padding: 10px 15px;
+    border: 5px ridge black;
+    background-color: #878a8d; /* Цвет кнопки Google */
+    color: white; /* Цвет текста */
+    cursor: pointer;
+    transition: background-color 0.3s ease; /* Плавное изменение цвета */
+    white-space: nowrap;
+    left: 35%;
+    right: 35%;
+}
+
+.google-login-link:hover {
+    background-color: #545557; /* Более тёмный оттенок при наведении */
+}
+
+.google-icon {
+    width: 7%; /* Размер иконки */
+    height: 7%;
+    margin-right: 10px; /* Отступ между иконкой и текстом */
+    border-radius: 20%;
+    object-fit: cover;
+}
+
+.google-link-text {
+    font-size: 100%;
+    font-family: cursive;
+    margin: 0; /* Убирает внешние отступы текста */
+    padding: 0; /* Убирает внутренние отступы текста */
+}
