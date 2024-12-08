@@ -2,7 +2,9 @@ from django.urls import path
 from poker.views.auth_views.views import (google_auth, get_profile, logout, edit_profile,
                                           get_profile_photos, get_state)
 
-from poker.views.lobby_views.views import create_lobby, get_lobbies_list, join_lobby, exit_lobby, validate_lobby
+from poker.views.lobby_views.views import (create_lobby, get_lobbies_list, join_lobby, exit_lobby, validate_lobby,
+                                           get_players_info, get_table_info)
+
 
 urlpatterns = [
     path('api/auth/', google_auth),
@@ -16,4 +18,6 @@ urlpatterns = [
     path('api/lobby/join/', join_lobby),
     path('api/lobby/exit/', exit_lobby),
     path('api/lobby/validate/', validate_lobby),
+    path('api/lobby/players/', get_players_info),
+    path('api/lobby/table/', get_table_info),
 ]

@@ -3,13 +3,15 @@ import './styles/Error.css'
 import {useNavigate} from "react-router-dom";
 import {confirmation} from "../../requests/Auth";
 
-const Warning = ({lobby_id, changeWarning}) => {
+const Warning = ({lobby_id, changeWarning, socket}) => {
 
     const navigate = useNavigate();
 
     const yes = async () => {
         const result = await confirmation(lobby_id);
         if (result) {
+            socket.current.send(JSON.stringify({'event': 'info', 'message': 'force_disconnect'}));
+            socket.current.close();
             changeWarning();
             navigate('/main');
         }

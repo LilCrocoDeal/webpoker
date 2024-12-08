@@ -95,7 +95,8 @@ class Players(models.Model):
     current_hand - текущая рука игрока (по умолчанию [])
     current_bet - текущая ставка игрока
     status - состояние игрока ('non_active' - когда игрок находится в лобби до начала игры и когда он не участвует в
-             раунде, т.е. спасанул; 'first_check' - первая проверка полученных карт до ставок; 'turn' - ход игрока,
+             раунде, т.е. спасанул; 'ready' - когда игрок нажал кнопку готовности и готов начинать раунд,
+             'first_check' - первая проверка полученных карт до ставок; 'turn' - ход игрока,
              во время которого он принимает решение о действии, 'active' - когда игрок в раунде и сделал свою ставку.)
     """
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
@@ -110,14 +111,22 @@ class LobbyInfo(models.Model):
     """
     Модель для параметров in-game lobby
     fields:
-    player_with_turn - посадочное место игрока с текущим ходом
+    player_with_turn - посадочное место игрока с текущим ходом (фактически, местоположение BB)
     round_bet - текущая ставка раунда, 0 - если раунд не идет
+    round_stage - текущий этап раунда (preflop, flop, turn, river); waiting - когда набралось лобби людей, но еще не
+                  нажаты кнопки готовности
     deck - текущая колода раунда
+    dealer_cards - карты на столе в текущем раунде
+    status - состояние лобби. 'inactive' значит, в лобби только 1 человек, нет возможности начать игру, не появляются
+             кнопки блайндов, 'active' - больше одного игрока
     """
     lobby_id = models.ForeignKey(Lobbies, on_delete=models.CASCADE)
-    player_with_turn = models.IntegerField(default=0)
+    player_with_turn = models.IntegerField(default=1)
     round_bet = models.IntegerField(default=0)
+    round_stage = models.CharField(max_length=10, default='waiting')
     deck = models.JSONField(default=list)
+    dealer_cards = models.JSONField(default=list)
+    status = models.CharField(max_length=10, default='inactive')
 
     def shuffle_deck(self):
         """Перемешивает текущую колоду"""

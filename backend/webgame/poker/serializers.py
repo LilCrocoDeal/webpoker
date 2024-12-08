@@ -1,6 +1,6 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
-from poker.models import Lobbies, Players
+from poker.models import Lobbies, Players, LobbyInfo
 
 User = get_user_model()
 
@@ -24,6 +24,15 @@ class LobbySerializer(serializers.ModelSerializer):
 
 
 class PlayersSerializer(serializers.ModelSerializer):
+    username = serializers.CharField(source='user_id.username')
+
     class Meta:
         model = Players
-        fields = '__all__'
+        fields = ('user_id', 'username', 'seating_position', 'current_bet', 'status')
+
+
+class LobbyInfoSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = LobbyInfo
+        exclude = ('deck', 'dealer_cards')
+

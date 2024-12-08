@@ -1,0 +1,105 @@
+
+.lobby_table {
+    position: absolute;
+    width: 60vh; /* Размер игрового стола */
+    height: 60vh;
+    transform: translate(+50%, +25%);
+}
+
+.table_table {
+    width: 100%;
+    height: 100%;
+    background-color: #196819; /* Цвет стола */
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 5px dashed black;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
+    position: relative;
+    z-index: 1;
+}
+
+.players_table {
+    position: absolute;
+    top: 0;
+    left: 0;
+    width: 100%;
+    height: 100%;
+    z-index: 2;
+}
+
+.player-slot_table {
+    position: absolute;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transform: translate(-50%, -45%);
+}
+
+.card-slots_table {
+    display: flex;
+    flex-direction: row; /* Горизонтальное расположение слотов */
+    gap: 0; /* Убираем отступы между слотами */
+}
+
+.card-slot_table {
+    width: 6vh;
+    height: 9vh;
+    border: 3px solid #000000;
+    margin: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.card-slot_table img {
+    width: 100%;
+    height: 100%;
+    object-fit: cover;
+    font-size: medium;
+}
+
+.nickname_table {
+    color: #000000;
+    font-size: 14px;
+    text-align: center;
+}
+
+.center_table {
+    position: absolute;
+    width: 100%;
+    top: 50%;
+    transform: translateY(-50%);
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+}
+
+.deck_table {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.dealer_cards_table {
+    display: flex;
+    flex-direction: row;
+    gap: 0;
+    justify-content: center;
+    align-items: center;
+}
+
+.bb_table {
+    background-color: #f4c318;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 5px dashed black;
+}
+
+.sb_table {
+    background-color: #2e69b5;
+    aspect-ratio: 1;
+    border-radius: 50%;
+    border: 5px dashed black;
+}

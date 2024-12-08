@@ -23,3 +23,23 @@
 .returnButton_game:hover {
     background-color: #545557;
 }
+
+.contextWindow_base {
+    position: absolute;
+    background-color: white;
+    width: 14vw;
+    height: 60vh;
+    top: 20vh;
+    left: 5vw;
+    border: 10px ridge black;
+}
+
+.chatWindow_base {
+    position: absolute;
+    background-color: white;
+    width: 13vw;
+    height: 60vh;
+    top: 20vh;
+    right: 5vw;
+    border: 10px ridge black;
+}

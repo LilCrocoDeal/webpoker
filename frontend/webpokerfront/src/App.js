@@ -24,7 +24,7 @@ function App() {
               <Route path="/create_lobby" element={<UserManager  child_type={'profile'} child={<CreateLobby/>}/>} />
               <Route path="/join_lobby" element={<UserManager child_type={'profile'} child={<JoinLobby/>}/>} />
               <Route path="/lobby/*" element={<UserManager  child_type={'lobby'} child={<Lobby/>}/>} />
-              <Route path="*" element={<NoPage/>} />
+              <Route path="*" element={<UserManager child_type={'auth'} child={<NoPage/>}/>} />
               <Route path="/error" element={<Error/>} />
               <Route path="/noaccess" element={<NoAccess/>} />
               <Route path="/unauthorized" element={<Unauthorized/>} />

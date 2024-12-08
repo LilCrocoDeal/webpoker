@@ -1,5 +1,4 @@
 import json
-
 from channels.generic.websocket import AsyncWebsocketConsumer
 
 
@@ -12,8 +11,10 @@ class ChatConsumer(AsyncWebsocketConsumer):
 
         await self.accept()
 
+
     async def disconnect(self, close_code):
         await self.channel_layer.group_discard(self.lobby_group_name, self.channel_name)
+
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
@@ -29,6 +30,7 @@ class ChatConsumer(AsyncWebsocketConsumer):
             }
         )
 
+
     async def chat_message(self, event):
         message = event['message']
         username = event['username']
@@ -38,19 +40,3 @@ class ChatConsumer(AsyncWebsocketConsumer):
             'message': message,
             'username': username
         }))
-
-
-class GameConsumer(AsyncWebsocketConsumer):
-    async def connect(self):
-        self.lobby_name = self.scope['url_route']['kwargs']['room_name']
-        self.lobby_group_name = f"lobby_{self.lobby_name}"
-
-        await self.channel_layer.group_add(self.lobby_group_name, self.channel_name)
-        await self.accept()
-
-    async def disconnect(self, close_code):
-        await self.channel_layer.group_discard(self.lobby_group_name, self.channel_name)
-
-    async def receive(self, text_data):
-        text_data_json = json.loads(text_data)
-        pass

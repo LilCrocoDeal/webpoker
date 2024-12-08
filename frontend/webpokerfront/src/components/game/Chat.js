@@ -6,7 +6,7 @@ import './styles/Chat.css'
 const Chat = () => {
 
     const [message, setMessage] = useState('');
-    const [chat, setChat] = useState('');
+    const [chat, setChat] = useState([]);
     const socketChatRef = useRef(null);
     const navigate = useNavigate();
 
@@ -17,7 +17,10 @@ const Chat = () => {
         socketChatRef.current = new WebSocket("ws://localhost:8000/ws/chat/" + lobby_id + "/");
         socketChatRef.current.onmessage = (event) => {
             const data = JSON.parse(event.data);
-            setChat((chat) => chat + data.username + ": " + data.message  + "\n");
+            setChat((prevMessages) => [
+                ...prevMessages,
+                { 'username': data.username, 'message': data.message }
+            ]);
         };
         return () => {
             if (socketChatRef.current) {
@@ -53,10 +56,16 @@ const Chat = () => {
         }
     };
 
-
     return (
         <div className="chat_game">
-            <p className="chatField_game">{chat}</p>
+            <div className="chatField_game">
+                {chat.map((data, index) => (
+
+                    <p key={index}>
+                        <strong>{data.username}: </strong> {data.message}
+                    </p>
+                ))}
+            </div>
             <div className="chatInputBox">
                 <input
                     className="chatInput_game"
