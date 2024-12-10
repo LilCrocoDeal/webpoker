@@ -1,12 +1,13 @@
 import '../pages/styles/Base.css'
 import './styles/Lobby.css'
-import React, {useEffect, useRef, useState} from "react";
-import {lobby_permissions} from "../../requests/Auth";
+import {useEffect, useRef, useState} from "react";
+import {get_user_id, lobby_permissions} from "../../requests/Auth";
 import {useNavigate} from "react-router-dom";
 import Chat from "./Chat";
 import Table from "./Table";
-import {get_players_info, get_table_info} from "../../requests/Lobby";
+import {get_player_cards, get_players_info, get_round_state, get_table_info} from "../../requests/Lobby";
 import Warning from "../errors/Warning";
+import ContextWindow from "./ContextWindow";
 
 
 const Lobby = () => {
@@ -14,6 +15,7 @@ const Lobby = () => {
     const [isLoading, setIsLoading] = useState(true);
     const [players, setPlayers] = useState([]);
     const [dealerCards, setDealerCards] = useState([null, null, null, null, null]);
+    const [lobbyInfo, setLobbyInfo] = useState([]);
     const [button, setButton] = useState(0);
     const [warning, setWarning] = useState(false);
     const navigate = useNavigate();
@@ -22,23 +24,41 @@ const Lobby = () => {
     const pathname = window.location.pathname;
     const lobby_id = pathname.split('/').filter(Boolean).at(-1);
 
-    const get_players = async () => {
-        const players_info = await get_players_info(lobby_id);
-        if(players_info === null) {
-            throw Error('Ошибка получения игроков из базы данных')
-        }
-        else {
-            setPlayers(players_info);
-            return players_info.find((player) => player.is_current_user === true).user_id
-        }
-    }
+    const lobby_preloader = async () => {
+        if (lobby_id !== null) {
+            const round_state = await get_round_state(lobby_id);
+            const players_info = await get_players_info(lobby_id);
+            const table_info = await get_table_info(lobby_id);
 
-    const get_table = async () => {
-        const table_info = await get_table_info(lobby_id);
+            switch (round_state) {
+                case 'waiting':
+                    setPlayers(players_info);
 
-        setDealerCards(table_info.dealer_cards);
-        if (table_info.lobby_info.status === 'active') {
-            setButton(table_info.lobby_info.player_with_turn);
+                    setLobbyInfo(table_info.lobby_info);
+                    setDealerCards(table_info.dealer_cards);
+                    if (table_info.lobby_info.status === 'active') {
+                        setButton(table_info.lobby_info.player_with_BB);
+                    }
+                    break;
+                case 'preflop':
+                    const cards = await get_player_cards(lobby_id);
+
+                    const new_players = players_info.map((player) => ({
+                        ...player,
+                        'cards': (player.is_current_user) ? cards :
+                            ((player.status === 'non_active') ? [null, null] : ['card_cover', 'card_cover'])
+                    }))
+                    setPlayers(new_players);
+
+                    setLobbyInfo(table_info.lobby_info);
+                    setDealerCards(table_info.dealer_cards);
+                    if (table_info.lobby_info.status === 'active') {
+                        setButton(table_info.lobby_info.player_with_BB);
+                    }
+                    break;
+                default:
+                    break;
+            }
         }
     }
 
@@ -50,14 +70,13 @@ const Lobby = () => {
                     navigate("/NoAccess");
                 }
 
-                const player_id = await get_players();
-                await get_table();
+                const player_id = await get_user_id();
+                await lobby_preloader();
 
                 socketGameRef.current = new WebSocket("ws://localhost:8000/ws/game/" + lobby_id + "/");
                 socketGameRef.current.onopen = async (event) => {
                     await socketGameRef.current.send(JSON.stringify({
-                        'event': 'info',
-                        'message': 'connect',
+                        'event': 'connect',
                         'user_id': player_id,
                     }));
                 }
@@ -66,7 +85,15 @@ const Lobby = () => {
                     console.log(data);
                     switch (data.event) {
                         case 'update_players_data':
-                            await get_players();
+                            await lobby_preloader();
+                            break;
+                        case 'start_round':
+                            await lobby_preloader();
+                            await socketGameRef.current.send(JSON.stringify({
+                                'event': 'ready_to_start',
+                                'user_id': player_id,
+                                'lobby_id': lobby_id,
+                            }));
                             break;
                         default:
                             break;
@@ -108,10 +135,14 @@ const Lobby = () => {
                     players={players}
                     dealerCards={dealerCards}
                     button={button}
+                    lobbyInfo={lobbyInfo}
                 />
             </div>
             <div className="contextWindow_base">
-
+                <ContextWindow
+                    players={players}
+                    socketGameRef={socketGameRef}
+                />
             </div>
             <div className="chatWindow_base">
                 <Chat/>

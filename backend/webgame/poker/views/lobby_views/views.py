@@ -186,8 +186,61 @@ def get_player_cards(request):
     user = User.objects.get(user_id=request.COOKIES.get('user_id'))
     lobby = Lobbies.objects.get(lobby_id=request.data['lobby_id'])
 
-    player = Players.objects.filter(lobby_id=lobby, user_id=user)
-    return Response({'player_cards': [player.current_hand[0], player.current_hand[1]]}, status=200)
+    player = Players.objects.get(lobby_id=lobby, user_id=user)
+    if len(player.current_hand):
+        return Response({'player_cards': player.current_hand}, status=200)
+    else:
+        return Response({'player_cards': [None, None]}, status=200)
+
+
+@api_view(['POST'])
+@permission_classes([HasUserId])
+def set_ready(request):
+    user = User.objects.get(user_id=request.COOKIES.get('user_id'))
+    lobby = Lobbies.objects.get(lobby_id=request.data['lobby_id'])
+
+    player = Players.objects.get(lobby_id=lobby, user_id=user)
+    if player.status == 'non_active':
+        player.status = 'active'
+        player.save()
+
+        lobby_players = Players.objects.filter(lobby_id=lobby)
+        count_players = lobby_players.count()
+        if all(player.status == 'active' for player in lobby_players) and count_players > 1:
+            return Response({'action': 'start_round'}, status=200)
+        elif count_players == 1:
+            print('ERROR COUNT LAYERS')
+            return Response(status=400)
+
+
+        return Response({'action': None}, status=200)
+
+    return Response(status=400)
+
+
+@api_view(['POST'])
+@permission_classes([HasUserId])
+def set_not_ready(request):
+    user = User.objects.get(user_id=request.COOKIES.get('user_id'))
+    lobby = Lobbies.objects.get(lobby_id=request.data['lobby_id'])
+
+    player = Players.objects.get(lobby_id=lobby, user_id=user)
+    if player.status == 'active':
+        player.status = 'non_active'
+        player.save()
+
+        return Response(status=200)
+
+    return Response(status=400)
+
+
+@api_view(['POST'])
+@permission_classes([HasUserId])
+def get_round_state(request):
+    lobby = Lobbies.objects.get(lobby_id=request.data['lobby_id'])
+    lobby_info = LobbyInfo.objects.get(lobby_id=lobby)
+
+    return Response({'state': lobby_info.round_stage}, status=200)
 
 
 

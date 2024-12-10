@@ -56,3 +56,14 @@ export const lobby_permissions = async (lobby_id) => {
         return false;
     }
 }
+
+
+export const get_user_id = async () => {
+    try {
+        const response = await axiosInstance.get('/auth/get_user_id/')
+        return response.data.user_id;
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
+}

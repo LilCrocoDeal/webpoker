@@ -97,7 +97,8 @@ class Players(models.Model):
     status - состояние игрока ('non_active' - когда игрок находится в лобби до начала игры и когда он не участвует в
              раунде, т.е. спасанул; 'ready' - когда игрок нажал кнопку готовности и готов начинать раунд,
              'first_check' - первая проверка полученных карт до ставок; 'turn' - ход игрока,
-             во время которого он принимает решение о действии, 'active' - когда игрок в раунде и сделал свою ставку.)
+             во время которого он принимает решение о действии, 'active' - когда игрок в раунде и сделал свою ставку,
+             'all_in' - когда игрок пошел ва-банк.)
     """
     user_id = models.ForeignKey(User, on_delete=models.CASCADE)
     lobby_id = models.ForeignKey(Lobbies, on_delete=models.CASCADE)
@@ -111,7 +112,7 @@ class LobbyInfo(models.Model):
     """
     Модель для параметров in-game lobby
     fields:
-    player_with_turn - посадочное место игрока с текущим ходом (фактически, местоположение BB)
+    player_with_BB - посадочное место игрока с текущим  BB
     round_bet - текущая ставка раунда, 0 - если раунд не идет
     round_stage - текущий этап раунда (preflop, flop, turn, river); waiting - когда набралось лобби людей, но еще не
                   нажаты кнопки готовности
@@ -121,8 +122,9 @@ class LobbyInfo(models.Model):
              кнопки блайндов, 'active' - больше одного игрока
     """
     lobby_id = models.ForeignKey(Lobbies, on_delete=models.CASCADE)
-    player_with_turn = models.IntegerField(default=1)
+    player_with_BB = models.IntegerField(default=1)
     round_bet = models.IntegerField(default=0)
+    round_bank = models.IntegerField(default=0)
     round_stage = models.CharField(max_length=10, default='waiting')
     deck = models.JSONField(default=list)
     dealer_cards = models.JSONField(default=list)

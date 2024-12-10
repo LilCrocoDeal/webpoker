@@ -123,6 +123,13 @@ def get_profile_photos(request):
 
 @api_view(['GET'])
 @permission_classes([HasUserId])
+def get_user_id(request):
+    user = User.objects.get(user_id=request.COOKIES.get('user_id'))
+    return Response({'user_id': user.id}, status=200)
+
+
+@api_view(['GET'])
+@permission_classes([HasUserId])
 def get_state(request):
     user = User.objects.get(user_id=request.COOKIES.get('user_id'))
     if user.status == 'active':
@@ -133,4 +140,7 @@ def get_state(request):
     elif user.status == 'in_lobby':
         lobby_id = Players.objects.get(user_id=user).lobby_id.lobby_id
         return Response({'info': 'in_lobby', 'lobby_id': lobby_id}, status=200)
+
+
+
 

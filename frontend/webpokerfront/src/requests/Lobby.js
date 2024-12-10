@@ -50,8 +50,9 @@ export const get_players_info = async (lobby_id) => {
         const players = response.data.players.map((player) => ({
             ...player,
             'is_current_user': (player.user_id === response.data.current_player),
-            'cards': null,
+            'cards': [null, null],
         }));
+        console.log(players);
         return players;
     } catch (error) {
         console.log(error);
@@ -65,6 +66,51 @@ export const get_table_info = async (lobby_id) => {
         const response = await axiosInstance.post('lobby/table/', {'lobby_id': lobby_id});
         console.log(response.data);
         return response.data;
+    } catch (error) {
+        console.log(error);
+        return null;
+    }
+}
+
+export const set_readiness = async (lobby_id, status) => {
+
+    try {
+        if (status === 'ready'){
+            const response = await axiosInstance.post('lobby/set/ready/', {'lobby_id': lobby_id});
+            return response.data.action;
+        }
+        else if (status === 'not_ready'){
+            await axiosInstance.post('lobby/set/not_ready/', {'lobby_id': lobby_id});
+            return true;
+        }
+    } catch (error) {
+        console.log(error);
+        return null;
+    }
+}
+
+export const get_player_cards = async (lobby_id) => {
+
+    try {
+        const response = await axiosInstance.post('lobby/get_cards/', {'lobby_id': lobby_id});
+        console.log(response.data);
+        if (response.data.player_cards[0] === null && response.data.player_cards[1] === null) {
+            return response.data.player_cards;
+        } else {
+            return [response.data.player_cards[0][0] + '_' + response.data.player_cards[0][1],
+                    response.data.player_cards[1][0] + '_' + response.data.player_cards[1][1]];
+        }
+    } catch (error) {
+        console.log(error);
+        return null;
+    }
+}
+
+export const get_round_state = async (lobby_id) => {
+
+    try {
+        const response = await axiosInstance.post('lobby/get_state/', {'lobby_id': lobby_id});
+        return response.data.state;
     } catch (error) {
         console.log(error);
         return null;

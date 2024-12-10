@@ -10,7 +10,7 @@ const Warning = ({lobby_id, changeWarning, socket}) => {
     const yes = async () => {
         const result = await confirmation(lobby_id);
         if (result) {
-            socket.current.send(JSON.stringify({'event': 'info', 'message': 'force_disconnect'}));
+            socket.current.send(JSON.stringify({'event': 'force_disconnect'}));
             socket.current.close();
             changeWarning();
             navigate('/main');

@@ -1,3 +1,6 @@
+* {
+    font-family: cursive;
+}
 
 .lobby_table {
     position: absolute;
@@ -12,7 +15,7 @@
     background-color: #196819; /* Цвет стола */
     aspect-ratio: 1;
     border-radius: 50%;
-    border: 5px dashed black;
+    border: 5px dashed lightgrey;
     box-shadow: 0 0 20px rgba(0, 0, 0, 0.5);
     position: relative;
     z-index: 1;
@@ -91,15 +94,25 @@
 }
 
 .bb_table {
+    position: absolute;
     background-color: #f4c318;
+    text-align: center;
     aspect-ratio: 1;
+    width: 5%;
+    height: 5%;
     border-radius: 50%;
     border: 5px dashed black;
+    transform: translate(-50%, -45%);
 }
 
 .sb_table {
+    position: absolute;
     background-color: #2e69b5;
+    text-align: center;
+    width: 5%;
+    height: 5%;
     aspect-ratio: 1;
     border-radius: 50%;
     border: 5px dashed black;
+    transform: translate(-50%, -45%);
 }

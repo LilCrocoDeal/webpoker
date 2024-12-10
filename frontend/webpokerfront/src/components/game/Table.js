@@ -3,11 +3,9 @@ import './styles/Table.css'
 import Card from "../elements/Card";
 
 const Table = ({players, dealerCards, button}) => {
-    const [tablePlayers, setTablePlayers] = useState([]);
-    const [tableCards, setTableCards] = useState([null, null, null, null, null]);
-    const [tableButton, setTableButton] = useState(0);
     const tableRef = useRef(null);
     const playerRef = useRef(null);
+
     const [offset, setOffset] = useState(0);
     const [tableRadius, setTableRadius] = useState(0);
 
@@ -26,10 +24,6 @@ const Table = ({players, dealerCards, button}) => {
 
         updateParameters();
         window.addEventListener("resize", updateParameters);
-
-        setTablePlayers(players);
-        setTableCards(dealerCards);
-        setTableButton(button);
 
         return () => {
             window.removeEventListener("resize", updateParameters);
@@ -54,6 +48,24 @@ const Table = ({players, dealerCards, button}) => {
         }
     };
 
+    const get_buttons_position = (blind_type) => {
+        if (blind_type === 'BB'){
+            const {x, y} = calculatePosition(button, players.length, 'button');
+            return {x, y}
+        }
+        else if (blind_type === 'SB'){
+            const {x, y} = calculatePosition(
+                (button === 1 ? players.length : (button-1)),
+                players.length,
+                'button'
+            );
+            return {x, y}
+        }
+        else {
+            return null;
+        }
+    }
+
     return (
         <div className="lobby_table">
             <div className="table_table" ref={tableRef}></div>
@@ -65,54 +77,36 @@ const Table = ({players, dealerCards, button}) => {
                         </div>
                     </div>
                     <div className="dealer_cards_table">
-                        <div className="card-slot_table">
-                            <Card alt={'Deck'} value={tableCards[0]}/>
-                        </div>
-                        <div className="card-slot_table">
-                            <Card alt={'Deck'} value={tableCards[1]}/>
-                        </div>
-                        <div className="card-slot_table">
-                            <Card alt={'Deck'} value={tableCards[2]}/>
-                        </div>
-                        <div className="card-slot_table">
-                            <Card alt={'Deck'} value={tableCards[3]}/>
-                        </div>
-                        <div className="card-slot_table">
-                            <Card alt={'Deck'} value={tableCards[4]}/>
-                        </div>
+                        {dealerCards.map((card, index) => {
+                            return (
+                                <div className="card-slot_table" key={'dealer_card_' + index}>
+                                    <Card alt={'Deck'} value={card}/>
+                                </div>
+                            )
+                        })}
                     </div>
                 </div>
-                {() => {
-                    if (tableButton !== 0) {
-                        const BB_position = calculatePosition(tableButton, players.length, 'button');
-                        const SB_position = calculatePosition(
-                            (tableButton === 1 ? players.length : (tableButton-1)),
-                            players.length,
-                            'button'
-                        );
-                        return (
-                            <div>
-                                <div
-                                    key={'BB'}
-                                    className="bb_table"
-                                    style={{
-                                        top: `${BB_position.y}px`,
-                                        left: `${BB_position.x}px`,
-                                    }}
-                                >BB</div>
-                                <div
-                                    key={'SB'}
-                                    className="sb_table"
-                                    style={{
-                                        top: `${SB_position.y}px`,
-                                        left: `${SB_position.x}px`,
-                                    }}
-                                >SB</div>
-                            </div>
-                        )
-                    }
-                }}
-                {tablePlayers.map((player) => {
+                {players.length === 1 ? (<div></div>) :
+                    (<div>
+                        <div
+                            className="bb_table"
+                            style={{
+                                top: `${get_buttons_position('BB').y}px`,
+                                left: `${get_buttons_position('BB').x}px`,
+                            }}
+                        >BB
+                        </div>
+                        <div
+                            className="sb_table"
+                            style={{
+                                top: `${get_buttons_position('SB').y}px`,
+                                left: `${get_buttons_position('SB').x}px`,
+                            }}
+                        >SB
+                        </div>
+                    </div>)
+                }
+                {players.map((player) => {
                     const position = calculatePosition((player.seating_position), players.length, 'player');
                     return (
                         <div
@@ -126,10 +120,10 @@ const Table = ({players, dealerCards, button}) => {
                         >
                             <div className="card-slots_table">
                                 <div className="card-slot_table">
-                                    <Card alt={player.seating_position + 1} value={player.cards}/>
+                                    <Card alt={player.seating_position + 1} value={player.cards[0]}/>
                                 </div>
                                 <div className="card-slot_table">
-                                    <Card alt={player.seating_position + 2} value={player.cards}/>
+                                    <Card alt={player.seating_position + 2} value={player.cards[1]}/>
                                 </div>
                             </div>
                             <h1 className="nickname_table">{player.username}</h1>

@@ -1,3 +1,7 @@
+* {
+    font-family: cursive;
+}
+
 .chat_game {
     display: flex;
     flex-direction: column;
