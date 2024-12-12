@@ -88,6 +88,7 @@ def exit_lobby(request):
     else:
         if lobby.current_players == 2:
             lobby_info.status = 'inactive'
+            lobby_info.round_stage = 'waiting'
             lobby_info.save()
         lobby.current_players -= 1
         lobby.save()

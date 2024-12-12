@@ -25,10 +25,11 @@ class LobbySerializer(serializers.ModelSerializer):
 
 class PlayersSerializer(serializers.ModelSerializer):
     username = serializers.CharField(source='user_id.username')
+    poker_chips = serializers.CharField(source='user_id.poker_chips')
 
     class Meta:
         model = Players
-        fields = ('user_id', 'username', 'seating_position', 'current_bet', 'status')
+        fields = ('user_id', 'username', 'poker_chips', 'seating_position', 'current_bet', 'status')
 
 
 class LobbyInfoSerializer(serializers.ModelSerializer):

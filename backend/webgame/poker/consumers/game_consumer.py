@@ -16,7 +16,6 @@ class GameConsumer(AsyncWebsocketConsumer):
     response_buffer = set()
     players_query = []
 
-
     #-------------------------БАЗОВЫЕ МЕТОДЫ-------------------------------------------------
     async def connect(self):
         self.lobby_name = self.scope['url_route']['kwargs']['room_name']
@@ -25,13 +24,11 @@ class GameConsumer(AsyncWebsocketConsumer):
         await self.channel_layer.group_add(self.lobby_group_name, self.channel_name)
         await self.accept()
 
-
     async def disconnect(self, close_code):
         self.players_connect_events.discard(self.scope['user_id'])
 
         await self.channel_layer.group_discard(self.lobby_group_name, self.channel_name)
         asyncio.create_task(self.handle_disconnection_with_check(self.scope['user_id']))
-
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
@@ -71,7 +68,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             )
 
         elif text_data_json['event'] == 'ready_to_start':
-            if text_data_json['user_id'] in self.response_waiting_query:
+            if text_data_json['user_id'] in self.players_query:
                 self.players_query.remove(text_data_json['user_id'])
                 await self.channel_layer.group_send(
                     self.lobby_group_name,
@@ -93,8 +90,60 @@ class GameConsumer(AsyncWebsocketConsumer):
                         self.lobby_group_name,
                         {
                             'type': 'player_turn',
+                            'lobby_id': text_data_json['lobby_id'],
                         }
                     )
+
+        elif text_data_json['event'] == 'ready_to_start_new_stage':
+            print(self.players_query, self.channel_name)
+            print(text_data_json, self.channel_name)
+
+            if text_data_json['user_id'] in self.players_query:
+                self.players_query.remove(text_data_json['user_id'])
+                await self.channel_layer.group_send(
+                    self.lobby_group_name,
+                    {
+                        'type': 'delete_players_query_object',
+                        'object': text_data_json['user_id']
+                    }
+                )
+                if not self.players_query:
+                    await self.channel_layer.group_send(
+                        self.lobby_group_name,
+                        {
+                            'type': 'form_players_query',
+                            'event': 'normal',
+                            'lobby_id': text_data_json['lobby_id']
+                        }
+                    )
+                    previous_stage = await self.change_game_stage(text_data_json['user_id'])
+                    await self.channel_layer.group_send(
+                        self.lobby_group_name,
+                        {
+                            'type': 'declare_ended_stage',
+                            'previous_stage': previous_stage,
+                        }
+                    )
+
+                    await self.channel_layer.group_send(
+                        self.lobby_group_name,
+                        {
+                            'type': 'player_turn',
+                            'lobby_id': text_data_json['lobby_id'],
+                        }
+                    )
+
+            else:
+                if not len(self.players_query):
+                    await self.end_game(text_data_json['user_id'], 'error')
+                    await self.channel_layer.group_send(
+                        self.lobby_group_name,
+                        {
+                            'type': 'connection',
+                            'event': 'update_players_data',
+                        }
+                    )
+
         elif text_data_json['event'] == 'end_turn':
             if text_data_json['user_id'] in self.response_buffer:
                 self.response_buffer.discard(text_data_json['user_id'])
@@ -105,13 +154,15 @@ class GameConsumer(AsyncWebsocketConsumer):
                         self.lobby_group_name,
                         {
                             'type': 'action_response',
-                            'action': action,
+                            'action': text_data_json['action'],
+                            'user_id': text_data_json['user_id'],
                         }
                     )
                     await self.channel_layer.group_send(
                         self.lobby_group_name,
                         {
                             'type': 'player_turn',
+                            'lobby_id': text_data_json['lobby_id'],
                         }
                     )
                 elif action == 'update':
@@ -127,19 +178,27 @@ class GameConsumer(AsyncWebsocketConsumer):
                     await self.channel_layer.group_send(
                         self.lobby_group_name,
                         {
+                            'type': 'action_response',
+                            'action': text_data_json['action'],
+                            'user_id': text_data_json['user_id'],
+                        }
+                    )
+                    await self.channel_layer.group_send(
+                        self.lobby_group_name,
+                        {
                             'type': 'player_turn',
+                            'lobby_id': text_data_json['lobby_id'],
                         }
                     )
                 elif action == 'error':
                     await self.end_game(text_data_json['user_id'], 'error')
 
 
-    # -------------------------ДОПОЛНИТЕЛЬНЫЕ МЕТОДЫ-------------------------------------------------
+    # -------------------------IN-LAYER МЕТОДЫ-------------------------------------------------
     async def connection(self, event):
         await self.send(text_data=json.dumps({
             'event': event['event'],
         }))
-
 
     async def start_round(self, event):
         self.players_query = await self.get_turn_order(event['lobby_id'])
@@ -147,6 +206,11 @@ class GameConsumer(AsyncWebsocketConsumer):
             'event': 'start_round',
         }))
 
+    async def declare_ended_stage(self, event):
+        await self.send(text_data=json.dumps({
+            'event': 'stage_ended',
+            'previous_stage': event['previous_stage']
+        }))
 
     async def delete_players_query_object(self, event):
         try:
@@ -154,37 +218,36 @@ class GameConsumer(AsyncWebsocketConsumer):
         except ValueError:
             pass
 
-
     async def form_players_query(self, event):
         if event['event'] == 'normal':
             self.players_query = await self.get_turn_order(event['lobby_id'])
         else:
             self.players_query = await self.get_turn_order(event['lobby_id'], user_id=event['user_id'])
 
-
     async def action_response(self, event):
         await self.send(text_data=json.dumps({
             'event': 'action_response',
-            'action': event['action']
+            'action': event['action'],
+            'user_id': event['user_id'],
         }))
-
 
     async def player_turn(self, event):
         try:
             player = self.players_query.pop()
             self.response_buffer.add(player)
-
             await self.set_player_turn(player)
 
             await self.send(text_data=json.dumps({
                 'event': 'player_turn',
-                'player': self.players_query[-1]
+                'player': player
             }))
-            asyncio.create_task(self.waiting_for_player_end_turn(self.players_query[-1]))
+            asyncio.create_task(self.waiting_for_player_end_turn(player, event['lobby_id']))
+
         except IndexError:
-            pass
-
-
+            self.players_query = await self.get_turn_order(event['lobby_id'])
+            await self.send(text_data=json.dumps({
+                'event': 'end_stage',
+            }))
 
     async def handle_disconnection_with_check(self, user_id):
         if user_id is None:
@@ -207,12 +270,11 @@ class GameConsumer(AsyncWebsocketConsumer):
             }
         )
 
-
-    async def waiting_for_player_end_turn(self, user_id):
+    async def waiting_for_player_end_turn(self, user_id, lobby_id):
         if user_id is None:
             return
 
-        for _ in range(32):
+        for _ in range(30):
             if user_id not in self.response_buffer:
                 return
 
@@ -220,12 +282,20 @@ class GameConsumer(AsyncWebsocketConsumer):
 
         await self.player_action_db(user_id, 'fold')
 
+        self.response_buffer.discard(user_id)
+        await self.connection(event={'event': 'update_players_data'})
+        await self.action_response(event={'action': 'fold', 'user_id': user_id})
+        await self.player_turn(event={'lobby_id': lobby_id})
+
     # -------------------------БД МЕТОДЫ-------------------------------------------------
     @database_sync_to_async
     def set_player_turn(self, user_id):
-        player = Players.objects.get(user_id=User.objects.get(id=user_id))
-        player.status = 'turn'
-        player.save()
+        try:
+            player = Players.objects.get(user_id=User.objects.get(id=user_id))
+            player.status = 'turn'
+            player.save()
+        except ObjectDoesNotExist:
+            pass
 
     @database_sync_to_async
     def remove_user_from_db(self, user_id):
@@ -252,7 +322,6 @@ class GameConsumer(AsyncWebsocketConsumer):
 
         user.status = 'active'
         user.save()
-
 
     @database_sync_to_async
     def start_round_db(self, lobby_id):
@@ -281,18 +350,18 @@ class GameConsumer(AsyncWebsocketConsumer):
         lobby_info.round_stage = 'preflop'
         lobby_info.save()
 
-
     @database_sync_to_async
     def get_turn_order(self, lobby_id, user_id=None):
         lobby = Lobbies.objects.get(lobby_id=lobby_id)
-        active_players = (Players.objects.filter(lobby_id=lobby).exclude(Q(status='non_active') | Q(status='ready'))
+        active_players = (Players.objects.filter(lobby_id=lobby)
+                          .exclude(Q(status='non_active') | Q(status='ready') | Q(status='all_in'))
                           .order_by('seating_position'))
 
         if user_id is not None:
-            player_with_turn = Players.object.get(user_id=User.objects.get(id=user_id)).seating_position
+            player_with_turn = Players.objects.get(user_id=User.objects.get(id=user_id)).seating_position
 
         else:
-            player_with_turn = LobbyInfo.objects.get(lobby_id=lobby).player_with_turn
+            player_with_turn = LobbyInfo.objects.get(lobby_id=lobby).player_with_BB
 
         first_part = list(active_players.filter(seating_position__gte=player_with_turn)
                           .values_list('user_id', flat=True))
@@ -301,16 +370,18 @@ class GameConsumer(AsyncWebsocketConsumer):
         result = list(reversed(first_part + second_part))
 
         if user_id is not None:
-            result.remove(player_with_turn)
+            try:
+                result.remove(user_id)
+            except ValueError:
+                pass
 
         return result
-
 
     @database_sync_to_async
     def player_action_db(self, user_id, action):
         try:
             player = Players.objects.get(user_id=User.objects.get(id=user_id))
-            lobby_info = LobbyInfo(lobby_id=player.lobby_id)
+            lobby_info = LobbyInfo.objects.get(lobby_id=player.lobby_id)
             user = User.objects.get(id=user_id)
         except ObjectDoesNotExist:
             return 'error'
@@ -319,7 +390,6 @@ class GameConsumer(AsyncWebsocketConsumer):
             return 'another thread'
 
         if action == 'fold':
-
             if lobby_info.round_stage == 'preflop':
                 if player.seating_position == lobby_info.player_with_BB:
 
@@ -382,6 +452,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             player.save()
 
             lobby_info.round_bank += delta
+            lobby_info.round_bet = lobby_info.round_bet * 2
             lobby_info.save()
 
             return 'update'
@@ -409,15 +480,44 @@ class GameConsumer(AsyncWebsocketConsumer):
 
                 user.poker_chips = 0
                 user.save()
-                return 'update'
+                return 'done'
         else:
             return 'error'
 
+    @database_sync_to_async
+    def change_game_stage(self, user_id):
+        lobby = Players.objects.get(user_id=User.objects.get(id=user_id)).lobby_id
+        lobby_info = LobbyInfo.objects.get(lobby_id=lobby)
+
+        if lobby_info.round_stage == 'preflop':
+            lobby_info.round_stage = 'flop'
+            lobby_info.save()
+            return 'preflop'
+
+        elif lobby_info.round_stage == 'flop':
+            lobby_info.round_stage = 'turn'
+            lobby_info.save()
+            return 'flop'
+
+        elif lobby_info.round_stage == 'turn':
+            lobby_info.round_stage = 'river'
+            lobby_info.save()
+            return 'turn'
+
+        elif lobby_info.round_stage == 'river':
+            winners = self.end_game(user_id, status='normal')
+            print(winners)
+            return 'river'
+
+        else:
+            self.end_game(user_id, status='error')
+            return None
 
     @database_sync_to_async
     def end_game(self, user_id, status):
         if status == 'normal':
-            pass
+            print('конец игры')
+            return []
         elif status == 'error':
             lobby = Players.objects.get(user_id=User.objects.get(id=user_id)).lobby_id
             lobby_players = Players.objects.filter(lobby_id=lobby)
@@ -427,7 +527,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                 user.poker_chips += player.current_bet
                 user.save()
 
-                player.current_hand = [None, None]
+                player.current_hand = []
                 player.current_bet = 0
                 player.status = 'non_active'
                 player.save()
@@ -443,4 +543,10 @@ class GameConsumer(AsyncWebsocketConsumer):
             lobby_info.dealer_cards = []
             lobby_info.deck = []
             lobby_info.save()
+
+            return []
+
+
+
+
 

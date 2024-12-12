@@ -16,6 +16,9 @@ const Lobby = () => {
     const [players, setPlayers] = useState([]);
     const [dealerCards, setDealerCards] = useState([null, null, null, null, null]);
     const [lobbyInfo, setLobbyInfo] = useState([]);
+    const [roundState, setRoundState] = useState('waiting');
+    const [playerState, setPlayerState] = useState('non_active');
+    const [logs, setLogs] = useState([]);
     const [button, setButton] = useState(0);
     const [warning, setWarning] = useState(false);
     const navigate = useNavigate();
@@ -30,6 +33,9 @@ const Lobby = () => {
             const players_info = await get_players_info(lobby_id);
             const table_info = await get_table_info(lobby_id);
 
+            setRoundState(round_state);
+            setPlayerState((players_info.find(player => player.is_current_user) || {}).status)
+
             switch (round_state) {
                 case 'waiting':
                     setPlayers(players_info);
@@ -41,6 +47,9 @@ const Lobby = () => {
                     }
                     break;
                 case 'preflop':
+                case 'flop':
+                case 'turn':
+                case 'river':
                     const cards = await get_player_cards(lobby_id);
 
                     const new_players = players_info.map((player) => ({
@@ -82,18 +91,76 @@ const Lobby = () => {
                 }
                 socketGameRef.current.onmessage = async (event) => {
                     const data = JSON.parse(event.data);
+                    const players_info = await get_players_info(lobby_id);
                     console.log(data);
                     switch (data.event) {
                         case 'update_players_data':
                             await lobby_preloader();
                             break;
                         case 'start_round':
+                            setLogs((prevMessages) => [
+                                ...prevMessages,
+                                'Раунд начат'
+                            ]);
                             await lobby_preloader();
                             await socketGameRef.current.send(JSON.stringify({
                                 'event': 'ready_to_start',
                                 'user_id': player_id,
                                 'lobby_id': lobby_id,
                             }));
+                            break;
+                        case 'player_turn':
+                            setLogs((prevMessages) => [
+                                ...prevMessages,
+                                'Ход игрока ' + players_info.find(player => player.user_id === data.player).username
+                            ]);
+                            await lobby_preloader();
+                            break;
+                        case 'action_response':
+                            console.log(data.action, 'action_response');
+                            if (data.action === 'fold'){
+                                setLogs((prevMessages) => [
+                                    ...prevMessages,
+                                    'Игрок ' + players_info.find(player => player.user_id === data.user_id).username +
+                                    ' спасовал'
+                                ]);
+                            }
+                            else if (data.action === 'call'){
+                                setLogs((prevMessages) => [
+                                    ...prevMessages,
+                                    'Игрок ' + players_info.find(player => player.user_id === data.user_id).username +
+                                    ' поддержал ставку'
+                                ]);
+                            }
+                            else if (data.action === 'raise') {
+                                setLogs((prevMessages) => [
+                                    ...prevMessages,
+                                    'Игрок ' + players_info.find(player => player.user_id === data.user_id).username +
+                                    ' поднял ставку вдвое'
+                                ]);
+                            }
+                            else if (data.action === 'all_in'){
+                                setLogs((prevMessages) => [
+                                    ...prevMessages,
+                                    'Игрок ' + players_info.find(player => player.user_id === data.user_id).username +
+                                    ' пошел ва-банк'
+                                ]);
+                            }
+                            break;
+                        case 'end_stage':
+                            await lobby_preloader();
+                            await socketGameRef.current.send(JSON.stringify({
+                                'event': 'ready_to_start_new_stage',
+                                'user_id': player_id,
+                                'lobby_id': lobby_id,
+                            }));
+                            break;
+                        case 'stage_ended':
+                            await lobby_preloader();
+                            setLogs((prevMessages) => [
+                                ...prevMessages,
+                                data.previous_stage + ' завершен'
+                            ])
                             break;
                         default:
                             break;
@@ -136,12 +203,16 @@ const Lobby = () => {
                     dealerCards={dealerCards}
                     button={button}
                     lobbyInfo={lobbyInfo}
+                    logs={logs}
                 />
             </div>
             <div className="contextWindow_base">
                 <ContextWindow
                     players={players}
                     socketGameRef={socketGameRef}
+                    roundState={roundState}
+                    playerState={playerState}
+                    lobbyInfo={lobbyInfo}
                 />
             </div>
             <div className="chatWindow_base">

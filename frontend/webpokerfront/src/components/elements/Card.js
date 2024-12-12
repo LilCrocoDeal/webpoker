@@ -1,3 +1,5 @@
+import card_cover from '../../assets/Playing Cards/card_cover.png'
+
 const Card = ({alt, value}) => {
 
     if (value === null) {
@@ -7,9 +9,14 @@ const Card = ({alt, value}) => {
             </div>
         );
     }
-    else {
+    else if (value === 'card_cover') {
         return (
-            <img src={require(`../../assets/Playing Cards/${value}.png`)} alt={alt}/>
+            <img src={card_cover} alt={alt}/>
+        )
+    } else {
+        const card_name = value[0] + "_" + value[1]
+        return (
+            <img src={require(`../../assets/Playing Cards/${card_name}.png`)} alt={alt}/>
         )
     }
 

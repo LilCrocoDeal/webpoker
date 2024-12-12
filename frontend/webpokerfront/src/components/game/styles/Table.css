@@ -6,7 +6,7 @@
     position: absolute;
     width: 60vh; /* Размер игрового стола */
     height: 60vh;
-    transform: translate(+50%, +25%);
+    transform: translate(+40%, +25%);
 }
 
 .table_table {
@@ -115,4 +115,18 @@
     border-radius: 50%;
     border: 5px dashed black;
     transform: translate(-50%, -45%);
+}
+
+.info_table {
+    overflow-y: auto;
+    overflow-x: hidden;
+    white-space: pre-wrap;
+    word-wrap: break-word;
+    word-break: break-word;
+    position: absolute;
+    bottom: 0;
+    right: 0;
+    width: 25%;
+    height: 20%;
+    border: 2px solid #000000;
 }

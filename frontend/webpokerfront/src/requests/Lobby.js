@@ -94,12 +94,7 @@ export const get_player_cards = async (lobby_id) => {
     try {
         const response = await axiosInstance.post('lobby/get_cards/', {'lobby_id': lobby_id});
         console.log(response.data);
-        if (response.data.player_cards[0] === null && response.data.player_cards[1] === null) {
-            return response.data.player_cards;
-        } else {
-            return [response.data.player_cards[0][0] + '_' + response.data.player_cards[0][1],
-                    response.data.player_cards[1][0] + '_' + response.data.player_cards[1][1]];
-        }
+        return response.data.player_cards;
     } catch (error) {
         console.log(error);
         return null;
