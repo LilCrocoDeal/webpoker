@@ -169,7 +169,7 @@ def get_table_info(request):
             lobby_info.dealer_cards[3],
             'card_cover'
         ]}, status=200)
-    elif lobby_info.round_stage == 'river':
+    elif lobby_info.round_stage == 'river' or lobby_info.round_stage == 'end_game':
         return Response({'lobby_info': serializer.data, 'dealer_cards': [
             lobby_info.dealer_cards[0],
             lobby_info.dealer_cards[1],

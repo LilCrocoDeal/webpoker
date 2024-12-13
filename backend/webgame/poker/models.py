@@ -115,7 +115,7 @@ class LobbyInfo(models.Model):
     player_with_BB - посадочное место игрока с текущим  BB
     round_bet - текущая ставка раунда, 0 - если раунд не идет
     round_stage - текущий этап раунда (preflop, flop, turn, river); waiting - когда набралось лобби людей, но еще не
-                  нажаты кнопки готовности
+                  нажаты кнопки готовности; end_game - ознакомление с результатами игры.
     deck - текущая колода раунда
     dealer_cards - карты на столе в текущем раунде
     status - состояние лобби. 'inactive' значит, в лобби только 1 человек, нет возможности начать игру, не появляются
@@ -152,22 +152,5 @@ class LobbyInfo(models.Model):
     def create_full_deck(self):
         """Создает игральную колоду из 52 карт"""
         return [(i, j) for i in range(2, 15) for j in ['spades', 'hearts', 'clubs', 'diamonds']]
-
-
-class Actions(models.Model):
-    """
-    Модель, сохраняющая временные действия игроков во время раунда
-    fields:
-    action_type - тип действия, принимает значение 'fold' - игрок сбросил карты, 'call' - игрок поддержал ставку,
-                  'raise' - игрок повысил ставку, 'all_in' - пока не понятна реализации, будет допиливаться
-    action_amount - стоимость ставки, если action_type = 'raise'
-    action_time - время, в которое было сделано действие
-    """
-    action_id = models.AutoField(primary_key=True)
-    lobby_id = models.ForeignKey(Lobbies, on_delete=models.CASCADE)
-    user_id = models.ForeignKey(User, on_delete=models.CASCADE)
-    action_type = models.CharField(max_length=30, default='none')
-    action_amount = models.IntegerField(default=0)
-    action_time = models.TimeField(auto_now=True)
 
 

@@ -15,6 +15,7 @@
     position: relative;
     box-sizing: content-box;
     color: black;
+    white-space: pre-line
 }
 
 .button_confirm_context {

@@ -18,6 +18,7 @@ const Lobby = () => {
     const [lobbyInfo, setLobbyInfo] = useState([]);
     const [roundState, setRoundState] = useState('waiting');
     const [playerState, setPlayerState] = useState('non_active');
+    const [winners, setWinners] = useState([]);
     const [logs, setLogs] = useState([]);
     const [button, setButton] = useState(0);
     const [warning, setWarning] = useState(false);
@@ -27,7 +28,7 @@ const Lobby = () => {
     const pathname = window.location.pathname;
     const lobby_id = pathname.split('/').filter(Boolean).at(-1);
 
-    const lobby_preloader = async () => {
+    const lobby_preloader = async (external_data = null) => {
         if (lobby_id !== null) {
             const round_state = await get_round_state(lobby_id);
             const players_info = await get_players_info(lobby_id);
@@ -58,6 +59,32 @@ const Lobby = () => {
                             ((player.status === 'non_active') ? [null, null] : ['card_cover', 'card_cover'])
                     }))
                     setPlayers(new_players);
+
+                    setLobbyInfo(table_info.lobby_info);
+                    setDealerCards(table_info.dealer_cards);
+                    if (table_info.lobby_info.status === 'active') {
+                        setButton(table_info.lobby_info.player_with_BB);
+                    }
+                    break;
+                case 'end_game':
+                    try {
+                        const new_end_players = players_info.map((player) => ({
+                            ...player,
+                            'cards': external_data.findIndex(object => object.player === player.user_id) === -1 ?
+                                ((player.status === 'non_active') ? [null, null] : ['card_cover', 'card_cover']) :
+                                (external_data[external_data.findIndex(object => object.player === player.user_id)].hand)
+                        }))
+                        setPlayers(new_end_players);
+                    } catch (error) {
+                        const end_cards = await get_player_cards(lobby_id);
+
+                        const new_end_players = players_info.map((player) => ({
+                            ...player,
+                            'cards': (player.is_current_user) ? end_cards :
+                                ((player.status === 'non_active') ? [null, null] : ['card_cover', 'card_cover'])
+                        }))
+                        setPlayers(new_end_players);
+                    }
 
                     setLobbyInfo(table_info.lobby_info);
                     setDealerCards(table_info.dealer_cards);
@@ -162,6 +189,13 @@ const Lobby = () => {
                                 data.previous_stage + ' завершен'
                             ])
                             break;
+                        case 'end_game':
+                            setWinners(data.info.winners);
+                            setLogs([]);
+                            console.log(data, 'ФУЛЛ ДАТА')
+                            console.log(data.info.last_players, 'ДАТА');
+                            await lobby_preloader(data.info.last_players);
+                            break;
                         default:
                             break;
                     }
@@ -213,6 +247,7 @@ const Lobby = () => {
                     roundState={roundState}
                     playerState={playerState}
                     lobbyInfo={lobbyInfo}
+                    winners={winners}
                 />
             </div>
             <div className="chatWindow_base">

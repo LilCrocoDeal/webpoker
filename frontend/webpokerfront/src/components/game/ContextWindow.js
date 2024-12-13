@@ -6,7 +6,7 @@ import {useNavigate} from "react-router-dom";
 import Timer from "../elements/Timer";
 
 
-const ContextWindow = ({players, roundState, playerState, socketGameRef, lobbyInfo}) => {
+const ContextWindow = ({players, roundState, playerState, socketGameRef, lobbyInfo, winners}) => {
 
     const [buttonGreen, setButtonGreen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -139,51 +139,76 @@ const ContextWindow = ({players, roundState, playerState, socketGameRef, lobbyIn
             playerState === 'all_in' || playerState === 'first_check') {
             return (
                 <div className="base_context">
-                    <h1 className="text_context">Ход игрока {(players.find(player => (player.status === 'turn')) || {}).username}:</h1>
-                    <Timer onComplete={set_empty} />
-                    <p className="text_context">текущая ставка: {lobbyInfo.round_bet}</p>
-                    <p className="text_context">ваши фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}</p>
+                    {(players.find(player => (player.status === 'turn')) || {}).username === undefined ?
+                        (<div></div>) :
+                        ((players.find(player => player.is_current_user) || {}).poker_chips === undefined ?
+                            (<div></div>) :
+                            (<div className="base_context">
+                                <h1 className="text_context">
+                                    Ход игрока {(players.find(player => (player.status === 'turn')) || {}).username}:
+                                </h1>
+                                <Timer onComplete={set_empty}/>
+                                <p className="text_context">текущая ставка: {lobbyInfo.round_bet}</p>
+                                <p className="text_context">
+                                    ваши фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}
+                                </p>
+                            </div>))
+                    }
                 </div>
             );
         } else if (playerState === 'turn') {
             return (
                 <div className="base_context">
-                    <h1 className="text_context">Ваш ход:</h1>
-                    <Timer onComplete={set_empty}/>
-                    <p className="text_context">текущая ставка: {lobbyInfo.round_bet}</p>
-                    <button onClick={on_fold} className="button_choice_context">FOLD</button>
-                    <button onClick={on_call} className="button_choice_context">CALL</button>
-                    <button onClick={on_raise} className="button_choice_context">RAISE</button>
-                    <button onClick={on_all_in} className="button_choice_context">ALL IN</button>
-                    <p className="text_context">ваши фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}</p>
+                    {((players.find(player => player.is_current_user) || {}).poker_chips === undefined ?
+                            (<div></div>) :
+                            (<div className="base_context">
+                                <h1 className="text_context">Ваш ход:</h1>
+                                <Timer onComplete={set_empty}/>
+                                <p className="text_context">текущая ставка: {lobbyInfo.round_bet}</p>
+                                <button onClick={on_fold} className="button_choice_context">FOLD</button>
+                                <button onClick={on_call} className="button_choice_context">CALL</button>
+                                <button onClick={on_raise} className="button_choice_context">RAISE</button>
+                                <button onClick={on_all_in} className="button_choice_context">ALL IN</button>
+                                <p className="text_context">
+                                    ваши фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}
+                                </p>
+                            </div>))
+                    }
                 </div>
             );
         }
     }
-    else if (roundState === 'flop' || roundState === 'turn') {
-        if (playerState === 'active' || playerState === 'non_active' || playerState === 'all_in') {
-            return (
-                <div className="base_context">
-                    <h1 className="text_context">Ход игрока {(players.find(player => (player.status === 'turn')) || {}).username}:</h1>
-                    <Timer onComplete={set_empty} />
-                    <p className="text_context">текущая ставка: {lobbyInfo.round_bet}</p>
-                    <p className="text_context">ваши фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}</p>
-                </div>
-            );
-        } else if (playerState === 'turn') {
-            return (
-                <div className="base_context">
-                    <h1 className="text_context">Ваш ход:</h1>
-                    <Timer onComplete={set_empty}/>
-                    <p className="text_context">текущая ставка: {lobbyInfo.round_bet}</p>
-                    <button onClick={on_fold} className="button_choice_context">FOLD</button>
-                    <button onClick={on_call} className="button_choice_context">CALL</button>
-                    <button onClick={on_raise} className="button_choice_context">RAISE</button>
-                    <button onClick={on_all_in} className="button_choice_context">ALL IN</button>
-                    <p className="text_context">ваши фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}</p>
-                </div>
-            );
-        }
+    else if (roundState === 'end_game') {
+        return (
+            <div className="base_context">
+                {winners === undefined ?
+                    (<div></div>) :
+                    winners.length === 1 ? (
+                        <div className="base_context">
+                            <Timer onComplete={set_empty}/>
+                            <h1 className="text_context">Раунд завершен.</h1>
+                            <h1 className="text_context">Победитель</h1>
+                            <h1 className="text_context">
+                                {(players.find(player => (player.user_id === winners[0])) || {}).username}
+                            </h1>
+                            <p className="text_context">ваши
+                                фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}</p>
+                        </div>
+                    ) : (
+                        <div>
+                            <Timer onComplete={set_empty}/>
+                            <h1 className="text_context">Раунд завершен.</h1>
+                            <h1 className="text_context">Победители</h1>
+                            <h1 className="text_context">
+                                {players.filter(player => winners.includes(player.user_id)).map(player => player.username).join('\n')}
+                            </h1>
+                            <p className="text_context">ваши
+                                фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}</p>
+                        </div>
+                    )
+                }
+            </div>
+        );
     }
 };
 

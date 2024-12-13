@@ -1,5 +1,6 @@
 import json
 
+from asgiref.sync import async_to_sync
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
 import asyncio
@@ -7,6 +8,7 @@ from django.contrib.auth import get_user_model
 from django.core.exceptions import ObjectDoesNotExist
 from django.db.models import F, Q
 from poker.models import Players, LobbyInfo, Lobbies
+from poker.igm.process import determine_best_hand, compare_hands
 
 User = get_user_model()
 
@@ -28,7 +30,7 @@ class GameConsumer(AsyncWebsocketConsumer):
         self.players_connect_events.discard(self.scope['user_id'])
 
         await self.channel_layer.group_discard(self.lobby_group_name, self.channel_name)
-        asyncio.create_task(self.handle_disconnection_with_check(self.scope['user_id']))
+        await self.handle_disconnection_with_check(self.scope['user_id'])
 
     async def receive(self, text_data):
         text_data_json = json.loads(text_data)
@@ -117,21 +119,24 @@ class GameConsumer(AsyncWebsocketConsumer):
                         }
                     )
                     previous_stage = await self.change_game_stage(text_data_json['user_id'])
-                    await self.channel_layer.group_send(
-                        self.lobby_group_name,
-                        {
-                            'type': 'declare_ended_stage',
-                            'previous_stage': previous_stage,
-                        }
-                    )
+                    if previous_stage == 'end':
+                        pass
+                    else:
+                        await self.channel_layer.group_send(
+                            self.lobby_group_name,
+                            {
+                                'type': 'declare_ended_stage',
+                                'previous_stage': previous_stage,
+                            }
+                        )
 
-                    await self.channel_layer.group_send(
-                        self.lobby_group_name,
-                        {
-                            'type': 'player_turn',
-                            'lobby_id': text_data_json['lobby_id'],
-                        }
-                    )
+                        await self.channel_layer.group_send(
+                            self.lobby_group_name,
+                            {
+                                'type': 'player_turn',
+                                'lobby_id': text_data_json['lobby_id'],
+                            }
+                        )
 
             else:
                 if not len(self.players_query):
@@ -190,6 +195,8 @@ class GameConsumer(AsyncWebsocketConsumer):
                             'lobby_id': text_data_json['lobby_id'],
                         }
                     )
+                elif action == 'end':
+                    pass
                 elif action == 'error':
                     await self.end_game(text_data_json['user_id'], 'error')
 
@@ -249,6 +256,14 @@ class GameConsumer(AsyncWebsocketConsumer):
                 'event': 'end_stage',
             }))
 
+    async def send_end_game(self, event):
+        result = await self.get_last_players_standing_hands(event['winners'])
+        await self.send(text_data=json.dumps({
+            'event': 'end_game',
+            'info': result,
+        }))
+        await self.waiting_before_new_round_starts(event['winners'])
+
     async def handle_disconnection_with_check(self, user_id):
         if user_id is None:
             return
@@ -259,16 +274,18 @@ class GameConsumer(AsyncWebsocketConsumer):
 
             await asyncio.sleep(1)
 
-        await self.remove_user_from_db(user_id)
-
-        await asyncio.sleep(2)
-        await self.channel_layer.group_send(
-            self.lobby_group_name,
-            {
-                'type': 'connection',
-                'event': 'update_players_data',
-            }
-        )
+        result = await self.remove_user_from_db(user_id)
+        if result == 'end':
+            pass
+        else:
+            await asyncio.sleep(2)
+            await self.channel_layer.group_send(
+                self.lobby_group_name,
+                {
+                    'type': 'connection',
+                    'event': 'update_players_data',
+                }
+            )
 
     async def waiting_for_player_end_turn(self, user_id, lobby_id):
         if user_id is None:
@@ -280,12 +297,22 @@ class GameConsumer(AsyncWebsocketConsumer):
 
             await asyncio.sleep(1)
 
-        await self.player_action_db(user_id, 'fold')
+        action = await self.player_action_db(user_id, 'fold')
+        if action == 'end':
+            await self.action_response(event={'action': 'fold', 'user_id': user_id})
+            self.response_buffer.discard(user_id)
+        else:
+            self.response_buffer.discard(user_id)
+            await self.connection(event={'event': 'update_players_data'})
+            await self.action_response(event={'action': 'fold', 'user_id': user_id})
+            await self.player_turn(event={'lobby_id': lobby_id})
 
-        self.response_buffer.discard(user_id)
+    async def waiting_before_new_round_starts(self, winners):
+        for _ in range(30):
+            await asyncio.sleep(1)
+
+        await self.clear_lobby_for_next_round(winners)
         await self.connection(event={'event': 'update_players_data'})
-        await self.action_response(event={'action': 'fold', 'user_id': user_id})
-        await self.player_turn(event={'lobby_id': lobby_id})
 
     # -------------------------БД МЕТОДЫ-------------------------------------------------
     @database_sync_to_async
@@ -322,6 +349,23 @@ class GameConsumer(AsyncWebsocketConsumer):
 
         user.status = 'active'
         user.save()
+
+        if lobby_info.round_stage != 'waiting' and (Players.objects.filter(lobby_id=lobby)
+                                                            .exclude(Q(status='non_active') | Q(status='ready'))
+                                                            .count() == 1):
+
+            winner = async_to_sync(self.end_game)(user_id, status='one_player')
+            async_to_sync(self.channel_layer.group_send)(
+                self.lobby_group_name,
+                {
+                    'type': 'send_end_game',
+                    'winners': winner,
+                }
+            )
+            return 'end'
+
+        return 'done'
+
 
     @database_sync_to_async
     def start_round_db(self, lobby_id):
@@ -395,8 +439,11 @@ class GameConsumer(AsyncWebsocketConsumer):
 
                     user.poker_chips -= player.lobby_id.big_blind
                     if user.poker_chips < 0:
-                        self.remove_user_from_db(user_id)
-                        return 'cash_issue'
+                        result = self.remove_user_from_db(user_id)
+                        if result == 'end':
+                            return 'end'
+                        else:
+                            return 'cash_issue'
                     else:
                         user.save()
                 elif ((player.seating_position == (lobby_info.player_with_BB - 1) and lobby_info.player_with_BB != 1) or
@@ -406,8 +453,11 @@ class GameConsumer(AsyncWebsocketConsumer):
 
                     user.poker_chips -= player.lobby_id.small_blind
                     if user.poker_chips < 0:
-                        self.remove_user_from_db(user_id)
-                        return 'cash_issue'
+                        result = self.remove_user_from_db(user_id)
+                        if result == 'end':
+                            return 'end'
+                        else:
+                            return 'cash_issue'
                     else:
                         user.save()
 
@@ -415,6 +465,21 @@ class GameConsumer(AsyncWebsocketConsumer):
             player.current_hand = [None, None]
             player.current_bet = 0
             player.save()
+
+            if lobby_info.round_stage != 'waiting' and (Players.objects.filter(lobby_id=player.lobby_id)
+                                                                .exclude(Q(status='non_active') | Q(status='ready'))
+                                                                .count() == 1):
+
+                winner = async_to_sync(self.end_game)(user_id, status='one_player')
+                async_to_sync(self.channel_layer.group_send)(
+                    self.lobby_group_name,
+                    {
+                        'type': 'send_end_game',
+                        'winners': winner,
+                    }
+                )
+                return 'end'
+
             return 'done'
 
         elif action == 'call':
@@ -423,8 +488,11 @@ class GameConsumer(AsyncWebsocketConsumer):
 
             user.poker_chips -= delta
             if user.poker_chips < 0:
-                self.remove_user_from_db(user_id)
-                return 'cash_issue'
+                result = self.remove_user_from_db(user_id)
+                if result == 'end':
+                    return 'end'
+                else:
+                    return 'cash_issue'
             else:
                 user.save()
 
@@ -443,8 +511,11 @@ class GameConsumer(AsyncWebsocketConsumer):
 
             user.poker_chips -= delta
             if user.poker_chips < 0:
-                self.remove_user_from_db(user_id)
-                return 'cash_issue'
+                result = self.remove_user_from_db(user_id)
+                if result == 'end':
+                    return 'end'
+                else:
+                    return 'cash_issue'
             else:
                 user.save()
             player.current_bet = (lobby_info.round_bet * 2)
@@ -505,9 +576,15 @@ class GameConsumer(AsyncWebsocketConsumer):
             return 'turn'
 
         elif lobby_info.round_stage == 'river':
-            winners = self.end_game(user_id, status='normal')
-            print(winners)
-            return 'river'
+            winners = async_to_sync(self.end_game)(user_id, status='few_players')
+            async_to_sync(self.channel_layer.group_send)(
+                self.lobby_group_name,
+                {
+                    'type': 'send_end_game',
+                    'winners': winners,
+                }
+            )
+            return 'end'
 
         else:
             self.end_game(user_id, status='error')
@@ -515,11 +592,45 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def end_game(self, user_id, status):
-        if status == 'normal':
-            print('конец игры')
-            return []
+        lobby = Players.objects.get(user_id=User.objects.get(id=user_id)).lobby_id
+        lobby_info = LobbyInfo.objects.get(lobby_id=lobby)
+
+        if status == 'few_players':
+            last_standing_players = (Players.objects.filter(lobby_id=lobby)
+                                     .exclude(Q(status='non_active') | Q(status='ready')))
+
+            calculated_array = []
+            for player in last_standing_players:
+                full_hand = player.current_hand + lobby_info.dealer_cards
+                calculated_array.append({'player_id': player.user_id.id, 'score': determine_best_hand(full_hand)})
+
+            winners = compare_hands(calculated_array)
+
+            for player in last_standing_players:
+                if player.user_id.id in winners:
+                    user_win = player.user_id
+                    user_win.poker_chips += lobby_info.round_bank // len(winners)
+                    user_win.win += lobby_info.round_bank // len(winners)
+                    user_win.save()
+
+            lobby_info.round_stage = 'end_game'
+            lobby_info.save()
+
+            return winners
+
+        elif status == 'one_player':
+            winner = Players.objects.filter(lobby_id=lobby).exclude(Q(status='non_active') | Q(status='ready'))[0]
+
+            user_win = winner.user_id
+            user_win.poker_chips += lobby_info.round_bank
+            user_win.win += lobby_info.round_bank
+            user_win.save()
+
+            lobby_info.round_stage = 'end_game'
+            lobby_info.save()
+            return [winner.user_id.id]
+
         elif status == 'error':
-            lobby = Players.objects.get(user_id=User.objects.get(id=user_id)).lobby_id
             lobby_players = Players.objects.filter(lobby_id=lobby)
 
             for player in lobby_players:
@@ -532,7 +643,6 @@ class GameConsumer(AsyncWebsocketConsumer):
                 player.status = 'non_active'
                 player.save()
 
-            lobby_info = LobbyInfo.objects.get(lobby_id=lobby)
             if lobby_info.player_with_BB < Players.objects.filter(lobby_id=lobby).count():
                 lobby_info.player_with_BB += 1
             else:
@@ -544,7 +654,45 @@ class GameConsumer(AsyncWebsocketConsumer):
             lobby_info.deck = []
             lobby_info.save()
 
-            return []
+            return [None]
+
+    @database_sync_to_async
+    def get_last_players_standing_hands(self, winners):
+        lobby = Players.objects.get(user_id=User.objects.get(id=winners[0])).lobby_id
+
+        result = {'last_players': [], 'winners': winners}
+
+        for player in Players.objects.filter(lobby_id=lobby).exclude(Q(status='non_active') | Q(status='ready')):
+            result['last_players'].append({'player': player.user_id.id, 'hand': player.current_hand})
+
+        print(result)
+        return result
+
+    @database_sync_to_async
+    def clear_lobby_for_next_round(self, winners):
+        lobby = Players.objects.get(user_id=User.objects.get(id=winners[0])).lobby_id
+        lobby_info = LobbyInfo.objects.get(lobby_id=lobby)
+
+        if Players.objects.filter(lobby_id=lobby).exclude(Q(status='non_active') | Q(status='ready')).exists():
+            lobby_players = Players.objects.filter(lobby_id=lobby)
+
+            for player in lobby_players:
+                player.current_hand = []
+                player.current_bet = 0
+                player.status = 'non_active'
+                player.save()
+
+            if lobby_info.player_with_BB < Players.objects.filter(lobby_id=lobby).count():
+                lobby_info.player_with_BB += 1
+            else:
+                lobby_info.player_with_BB = 1
+            lobby_info.round_bet = 0
+            lobby_info.round_bank = 0
+            lobby_info.round_stage = 'waiting'
+            lobby_info.dealer_cards = []
+            lobby_info.deck = []
+            lobby_info.save()
+
 
 
 

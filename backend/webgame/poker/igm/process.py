@@ -1,7 +1,6 @@
-import random
 from itertools import combinations
 from collections import Counter
-from process_utils import scorer_f_and_hc, scorer_4, scorer_fh, scorer_s_and_sf, scorer_3, \
+from poker.igm.process_utils import scorer_f_and_hc, scorer_4, scorer_fh, scorer_s_and_sf, scorer_3, \
     scorer_2p, scorer_p, is_straight
 
 
@@ -92,16 +91,20 @@ def determine_best_hand(card_list: list) -> tuple[int, int]:
     return highest_combination, best_score
 
 
-def compare_hands(hands_array: list) -> tuple:
+def compare_hands(hands_array: list) -> list:
     """Сравнивает лучшие руки игроков из входных данных и выдает победившую"""
-
     best_hand_in_set = (1, 0)
     for hand in hands_array:
-        if hand[0] >= best_hand_in_set[0] and hand[1] >= best_hand_in_set[1]:
-            best_hand_in_set = hand
+        if hand['score'][0] >= best_hand_in_set[0] and hand['score'][1] >= best_hand_in_set[1]:
+            best_hand_in_set = hand['score']
         else:
             continue
 
-    return best_hand_in_set
+    result = []
+    for hand in hands_array:
+        if hand['score'][0] == best_hand_in_set[0] and hand['score'][1] == best_hand_in_set[1]:
+            result.append(hand['player_id'])
+
+    return result
 
 
