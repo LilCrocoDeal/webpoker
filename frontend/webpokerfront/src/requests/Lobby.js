@@ -52,7 +52,6 @@ export const get_players_info = async (lobby_id) => {
             'is_current_user': (player.user_id === response.data.current_player),
             'cards': [null, null],
         }));
-        console.log(players);
         return players;
     } catch (error) {
         console.log(error);
@@ -64,7 +63,6 @@ export const get_table_info = async (lobby_id) => {
 
     try {
         const response = await axiosInstance.post('lobby/table/', {'lobby_id': lobby_id});
-        console.log(response.data);
         return response.data;
     } catch (error) {
         console.log(error);
@@ -93,7 +91,6 @@ export const get_player_cards = async (lobby_id) => {
 
     try {
         const response = await axiosInstance.post('lobby/get_cards/', {'lobby_id': lobby_id});
-        console.log(response.data);
         return response.data.player_cards;
     } catch (error) {
         console.log(error);

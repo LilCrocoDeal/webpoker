@@ -97,8 +97,6 @@ class GameConsumer(AsyncWebsocketConsumer):
                     )
 
         elif text_data_json['event'] == 'ready_to_start_new_stage':
-            print(self.players_query, self.channel_name)
-            print(text_data_json, self.channel_name)
 
             if text_data_json['user_id'] in self.players_query:
                 self.players_query.remove(text_data_json['user_id'])
@@ -390,7 +388,7 @@ class GameConsumer(AsyncWebsocketConsumer):
             player.save()
 
         lobby_info.round_bet = lobby.big_blind
-        lobby_info.round_bank = lobby.big_blind + lobby.small_blind
+        lobby_info.round_bank = 0
         lobby_info.round_stage = 'preflop'
         lobby_info.save()
 
@@ -446,6 +444,10 @@ class GameConsumer(AsyncWebsocketConsumer):
                             return 'cash_issue'
                     else:
                         user.save()
+
+                    lobby_info.round_bank += player.lobby_id.big_blind
+                    lobby_info.save()
+
                 elif ((player.seating_position == (lobby_info.player_with_BB - 1) and lobby_info.player_with_BB != 1) or
                       (lobby_info.player_with_BB == 1 and player.seating_position == Players.objects
                               .filter(lobby_id=player.lobby_id)
@@ -460,6 +462,9 @@ class GameConsumer(AsyncWebsocketConsumer):
                             return 'cash_issue'
                     else:
                         user.save()
+
+                    lobby_info.round_bank += player.lobby_id.small_blind
+                    lobby_info.save()
 
             player.status = 'non_active'
             player.current_hand = [None, None]
@@ -601,8 +606,8 @@ class GameConsumer(AsyncWebsocketConsumer):
 
             calculated_array = []
             for player in last_standing_players:
-                full_hand = player.current_hand + lobby_info.dealer_cards
-                calculated_array.append({'player_id': player.user_id.id, 'score': determine_best_hand(full_hand)})
+                calculated_array.append({'player_id': player.user_id.id,
+                                         'score': determine_best_hand(player.current_hand + lobby_info.dealer_cards)})
 
             winners = compare_hands(calculated_array)
 
@@ -659,13 +664,13 @@ class GameConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_last_players_standing_hands(self, winners):
         lobby = Players.objects.get(user_id=User.objects.get(id=winners[0])).lobby_id
+        lobby_info = LobbyInfo.objects.get(lobby_id=lobby)
 
-        result = {'last_players': [], 'winners': winners}
+        result = {'last_players': [], 'winners': winners, 'gained_cash': lobby_info.round_bank // len(winners)}
 
         for player in Players.objects.filter(lobby_id=lobby).exclude(Q(status='non_active') | Q(status='ready')):
             result['last_players'].append({'player': player.user_id.id, 'hand': player.current_hand})
 
-        print(result)
         return result
 
     @database_sync_to_async

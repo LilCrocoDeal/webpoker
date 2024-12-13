@@ -5,6 +5,7 @@ import Card from "../elements/Card";
 const Table = ({players, dealerCards, button, logs}) => {
     const tableRef = useRef(null);
     const playerRef = useRef(null);
+    const scrollRef = useRef(null);
 
     const [offset, setOffset] = useState(0);
     const [tableRadius, setTableRadius] = useState(0);
@@ -23,12 +24,16 @@ const Table = ({players, dealerCards, button, logs}) => {
         };
 
         updateParameters();
+
+        if (scrollRef.current) {
+            scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
+        }
         window.addEventListener("resize", updateParameters);
 
         return () => {
             window.removeEventListener("resize", updateParameters);
         };
-    }, [players, dealerCards, button]);
+    }, [players, dealerCards, button, logs]);
 
 
     const calculatePosition = (seating_position, total, type) => {
@@ -133,7 +138,7 @@ const Table = ({players, dealerCards, button, logs}) => {
                     })}
                 </div>
             </div>
-            <div className="info_table">
+            <div className="info_table" ref={scrollRef}>
                 {logs.map((data, index) => (
                     <p key={index}>{data}</p>
                 ))}

@@ -210,7 +210,6 @@ def set_ready(request):
         if all(player.status == 'active' for player in lobby_players) and count_players > 1:
             return Response({'action': 'start_round'}, status=200)
         elif count_players == 1:
-            print('ERROR COUNT LAYERS')
             return Response(status=400)
 
 
