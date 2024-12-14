@@ -3,7 +3,7 @@ import {axiosInstance} from "./AxiosConfig";
 
 const GOOGLE_AUTH_URI = 'https://accounts.google.com/o/oauth2/v2/auth'
 const GOOGLE_CLIENT_ID = '477157095175-qdg1vd05nftvbdgavqcs3h5j41tr146b.apps.googleusercontent.com'
-const GOOGLE_REDIRECT_URI = 'http://127.0.0.1:3000/main/'
+const GOOGLE_REDIRECT_URI = 'http://webpoker.timofeev.beget.tech/main/'
 
 export const uri = `${GOOGLE_AUTH_URI}?redirect_uri=${GOOGLE_REDIRECT_URI}&response_type=code&client_id=${GOOGLE_CLIENT_ID}&scope=profile email`
 

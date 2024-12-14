@@ -9,7 +9,7 @@ https://docs.djangoproject.com/en/5.1/topics/settings/
 For the full list of settings and their values, see
 https://docs.djangoproject.com/en/5.1/ref/settings/
 """
-
+import os
 from pathlib import Path
 from decouple import config
 
@@ -29,15 +29,18 @@ GOOGLE_OAUTH2_CLIENT_ID = config('GOOGLE_OAUTH2_CLIENT_ID')
 GOOGLE_OAUTH2_CLIENT_SECRET = config('GOOGLE_OAUTH2_CLIENT_SECRET')
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG=True
+DEBUG=False
 CORS_ALLOW_ALL_ORIGINS = True
 CORS_ALLOW_CREDENTIALS = True
 
-ALLOWED_HOSTS = ['timofeev.beget.tech', 'www.timofeev.beget.tech', '127.0.0.1']
+ALLOWED_HOSTS = ['timofeev.beget.tech', 'www.timofeev.beget.tech', '127.0.0.1', 'backend',
+                 'webpoker.timofeev.beget.tech', 'www.webpoker.timofeev.beget.tech']
 
 CORS_ALLOWED_ORIGINS = [
-    "http://127.0.0.1:3000",  # React dev сервер
-    "http://localhost:3000",  # React dev сервер
+    "http://127.0.0.1:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1",
+    "http://webpoker.timofeev.beget.tech"
 ]
 
 
@@ -170,7 +173,7 @@ CHANNEL_LAYERS = {
     "default": {
         "BACKEND": "channels_redis.core.RedisChannelLayer",
         "CONFIG": {
-            "hosts": [("127.0.0.1", 6379)],
+            "hosts": [('redis', 6379)],
         },
     },
 }

@@ -60,7 +60,7 @@ const Profile = () => {
                 <div className="column_profile column-left_profile">
                     <div className="icon-wrapper_profile">
                         <div className="icon_profile">
-                            <img src={profile_image} alt="Profile Icon"/>
+                            <img src={require(`../../assets/Profile Pictures/${profile_image}.png`)} alt="Profile Icon"/>
                         </div>
                         <button className="edit-icon_profile" onClick={() => {
                             navigate('/profile/edit');

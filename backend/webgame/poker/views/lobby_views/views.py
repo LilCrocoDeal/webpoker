@@ -199,8 +199,15 @@ def get_player_cards(request):
 def set_ready(request):
     user = User.objects.get(user_id=request.COOKIES.get('user_id'))
     lobby = Lobbies.objects.get(lobby_id=request.data['lobby_id'])
+    lobby_info = LobbyInfo.objects.get(lobby_id=lobby)
 
     player = Players.objects.get(lobby_id=lobby, user_id=user)
+    if player.seating_position == lobby_info.player_with_BB and user.poker_chips < lobby.big_blind:
+        return Response(status=400)
+    if lobby_info.player_with_BB != 1 and player.seating_position == (lobby_info.player_with_BB - 1) and \
+            user.poker_chips < lobby.small_blind:
+        return Response(status=400)
+
     if player.status == 'non_active':
         player.status = 'active'
         player.save()

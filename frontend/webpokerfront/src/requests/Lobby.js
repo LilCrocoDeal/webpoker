@@ -83,7 +83,7 @@ export const set_readiness = async (lobby_id, status) => {
         }
     } catch (error) {
         console.log(error);
-        return null;
+        return false;
     }
 }
 

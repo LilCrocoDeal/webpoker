@@ -19,7 +19,6 @@ const Lobby = () => {
     const [roundState, setRoundState] = useState('waiting');
     const [playerState, setPlayerState] = useState('non_active');
     const [winners, setWinners] = useState([]);
-    const [gainedCash, setGainedCash] = useState(0);
     const [logs, setLogs] = useState([]);
     const [button, setButton] = useState(0);
     const [warning, setWarning] = useState(false);
@@ -110,7 +109,7 @@ const Lobby = () => {
                 const player_id = await get_user_id();
                 await lobby_preloader();
 
-                socketGameRef.current = new WebSocket("ws://localhost:8000/ws/game/" + lobby_id + "/");
+                socketGameRef.current = new WebSocket("ws://127.0.0.1/ws/game/" + lobby_id + "/");
                 socketGameRef.current.onopen = async (event) => {
                     await socketGameRef.current.send(JSON.stringify({
                         'event': 'connect',
@@ -120,6 +119,7 @@ const Lobby = () => {
                 socketGameRef.current.onmessage = async (event) => {
                     const data = JSON.parse(event.data);
                     const players_info = await get_players_info(lobby_id);
+                    console.log(data)
                     switch (data.event) {
                         case 'update_players_data':
                             await lobby_preloader();
@@ -190,7 +190,6 @@ const Lobby = () => {
                             break;
                         case 'end_game':
                             setWinners(data.info.winners);
-                            setGainedCash(data.info.gained_cash)
                             setLogs([]);
                             await lobby_preloader(data.info.last_players);
                             break;
@@ -246,7 +245,6 @@ const Lobby = () => {
                     playerState={playerState}
                     lobbyInfo={lobbyInfo}
                     winners={winners}
-                    gainedCash={gainedCash}
                 />
             </div>
             <div className="chatWindow_base">

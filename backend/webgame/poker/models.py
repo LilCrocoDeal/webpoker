@@ -39,8 +39,7 @@ class User(AbstractBaseUser, PermissionsMixin):
     poker_chips = models.IntegerField(default=5000)
     win = models.IntegerField(default=0)
     status = models.CharField(max_length=10, default='active')
-    profile_image = models.CharField(max_length=100,
-                                     default='http://127.0.0.1:8000/static/profile_pictures/LuckyChip.png')
+    profile_image = models.IntegerField(default=1)
 
     objects = UserManager()
 

@@ -14,7 +14,7 @@ const Chat = () => {
     const lobby_id = pathname.split('/').filter(Boolean).at(-1);
 
     useEffect(() => {
-        socketChatRef.current = new WebSocket("ws://localhost:8000/ws/chat/" + lobby_id + "/");
+        socketChatRef.current = new WebSocket("ws://127.0.0.1/ws/chat/" + lobby_id + "/");
         socketChatRef.current.onmessage = (event) => {
             const data = JSON.parse(event.data);
             setChat((prevMessages) => [

@@ -29,7 +29,7 @@ def google_auth(request):
                                                 'code': request.data['code'],
                                                 'client_id': settings.GOOGLE_OAUTH2_CLIENT_ID,
                                                 'client_secret': settings.GOOGLE_OAUTH2_CLIENT_SECRET,
-                                                'redirect_uri': 'http://127.0.0.1:3000/main/',
+                                                'redirect_uri': 'http://webpoker.timofeev.beget.tech/main/',
                                                 'grant_type': 'authorization_code'
                                             })
                                             )
@@ -106,19 +106,7 @@ def edit_profile(request):
 @permission_classes([HasUserId])
 def get_profile_photos(request):
     user = User.objects.get(user_id=request.COOKIES.get('user_id'))
-    data = {
-        'photos': [
-            'http://127.0.0.1:8000/static/profile_pictures/JokerKnight.png',
-            'http://127.0.0.1:8000/static/profile_pictures/LuckyChip.png',
-            'http://127.0.0.1:8000/static/profile_pictures/JokerKnight1.png',
-            'http://127.0.0.1:8000/static/profile_pictures/LuckyChip1.png',
-            'http://127.0.0.1:8000/static/profile_pictures/JokerKnight2.png',
-            'http://127.0.0.1:8000/static/profile_pictures/LuckyChip2.png',
-        ],
-        'current_photo': user.profile_image
-
-    }
-    return Response(data, status=200)
+    return Response({'current_photo': user.profile_image}, status=200)
 
 
 @api_view(['GET'])

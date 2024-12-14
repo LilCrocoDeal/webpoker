@@ -6,7 +6,7 @@ import {useNavigate} from "react-router-dom";
 import Timer from "../elements/Timer";
 
 
-const ContextWindow = ({players, roundState, playerState, socketGameRef, lobbyInfo, winners, gainedCash}) => {
+const ContextWindow = ({players, roundState, playerState, socketGameRef, lobbyInfo, winners}) => {
 
     const [buttonGreen, setButtonGreen] = useState(false);
     const [isLoading, setIsLoading] = useState(true);
@@ -39,13 +39,10 @@ const ContextWindow = ({players, roundState, playerState, socketGameRef, lobbyIn
             const response = await set_readiness(lobby_id, 'not_ready');
             if (response) {
                 setButtonGreen(false);
-            } else {
-                throw Error('Лютейшая ошибка');
             }
         }
         else {
             const response = await set_readiness(lobby_id, 'ready');
-
             if (response === null) {
                 setButtonGreen(true);
             } else if (response === 'start_round') {
@@ -191,7 +188,6 @@ const ContextWindow = ({players, roundState, playerState, socketGameRef, lobbyIn
                             <h1 className="text_context">
                                 {(players.find(player => (player.user_id === winners[0])) || {}).username}
                             </h1>
-                            <h1 className="text_context">Выигрыш: {gainedCash}</h1>
                             <p className="text_context">ваши
                                 фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}</p>
                         </div>
@@ -203,7 +199,6 @@ const ContextWindow = ({players, roundState, playerState, socketGameRef, lobbyIn
                             <h1 className="text_context">
                                 {players.filter(player => winners.includes(player.user_id)).map(player => player.username).join('\n')}
                             </h1>
-                            <h1 className="text_context">Выигрыш: {gainedCash}</h1>
                             <p className="text_context">ваши
                                 фишки: {(players.find(player => player.is_current_user) || {}).poker_chips}</p>
                         </div>

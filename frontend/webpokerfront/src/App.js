@@ -15,7 +15,7 @@ import NoAccess from "./components/errors/NoAccess";
 function App() {
 
   return (
-      <BrowserRouter>
+      <BrowserRouter basename="/">
           <Routes>
               <Route path="/" element={<UserManager child_type={'auth'} child={<Auth/>}/>} />
               <Route path="/main" element={<UserManager child_type={'profile'} child={<Main/>}/>} />

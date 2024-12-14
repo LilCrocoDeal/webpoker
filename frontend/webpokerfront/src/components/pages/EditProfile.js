@@ -5,10 +5,16 @@ import {axiosInstance} from "../../requests/AxiosConfig";
 import {useEffect, useState} from "react";
 import {useNavigate} from "react-router-dom";
 
+import one from '../../assets/Profile Pictures/1.png'
+import two from '../../assets/Profile Pictures/2.png'
+import free from '../../assets/Profile Pictures/3.png'
+import four from '../../assets/Profile Pictures/4.png'
+import five from '../../assets/Profile Pictures/5.png'
+import six from '../../assets/Profile Pictures/6.png'
+
 const EditProfile = () => {
 
     const [isLoading, setIsLoading] = useState(true);
-    const [photos, setPhotos] = useState([]);
     const [selectedPhoto, setSelectedPhoto] = useState(null);
     const navigate = useNavigate();
 
@@ -17,8 +23,6 @@ const EditProfile = () => {
         (async () => {
             try {
                 const result = await axiosInstance.get("/profile/photos/");
-
-                setPhotos(result.data.photos);
                 setSelectedPhoto(result.data.current_photo);
 
             } catch (error) {
@@ -64,33 +68,33 @@ const EditProfile = () => {
         <div className="base">
             <div className="container_edit">
                 <div className="column_edit">
-                    <button className={`icon_edit ${selectedPhoto === photos[0] ? "selected" : ""}`}
-                            onClick={() => handlePhotoClick(photos[0])}>
-                        <img src={photos[0]} alt="Profile Icon 1"/>
+                    <button className={`icon_edit ${selectedPhoto === 1 ? "selected" : ""}`}
+                            onClick={() => handlePhotoClick(1)}>
+                        <img src={one} alt="Profile Icon 1"/>
                     </button>
-                    <button className={`icon_edit ${selectedPhoto === photos[3] ? "selected" : ""}`}
-                            onClick={() => handlePhotoClick(photos[3])}>
-                        <img src={photos[3]} alt="Profile Icon 4"/>
-                    </button>
-                </div>
-                <div className="column_edit">
-                    <button className={`icon_edit ${selectedPhoto === photos[1] ? "selected" : ""}`}
-                            onClick={() => handlePhotoClick(photos[1])}>
-                        <img src={photos[1]} alt="Profile Icon 2"/>
-                    </button>
-                    <button className={`icon_edit ${selectedPhoto === photos[4] ? "selected" : ""}`}
-                            onClick={() => handlePhotoClick(photos[4])}>
-                        <img src={photos[4]} alt="Profile Icon 5"/>
+                    <button className={`icon_edit ${selectedPhoto === 4 ? "selected" : ""}`}
+                            onClick={() => handlePhotoClick(4)}>
+                        <img src={four} alt="Profile Icon 4"/>
                     </button>
                 </div>
                 <div className="column_edit">
-                    <button className={`icon_edit ${selectedPhoto === photos[2] ? "selected" : ""}`}
-                            onClick={() => handlePhotoClick(photos[2])}>
-                        <img src={photos[2]} alt="Profile Icon 3"/>
+                    <button className={`icon_edit ${selectedPhoto === 2 ? "selected" : ""}`}
+                            onClick={() => handlePhotoClick(2)}>
+                        <img src={two} alt="Profile Icon 2"/>
                     </button>
-                    <button className={`icon_edit ${selectedPhoto === photos[5] ? "selected" : ""}`}
-                            onClick={() => handlePhotoClick(photos[5])}>
-                        <img src={photos[5]} alt="Profile Icon 6"/>
+                    <button className={`icon_edit ${selectedPhoto === 5 ? "selected" : ""}`}
+                            onClick={() => handlePhotoClick(5)}>
+                        <img src={five} alt="Profile Icon 5"/>
+                    </button>
+                </div>
+                <div className="column_edit">
+                    <button className={`icon_edit ${selectedPhoto === 3 ? "selected" : ""}`}
+                            onClick={() => handlePhotoClick(3)}>
+                        <img src={free} alt="Profile Icon 3"/>
+                    </button>
+                    <button className={`icon_edit ${selectedPhoto === 6 ? "selected" : ""}`}
+                            onClick={() => handlePhotoClick(6)}>
+                        <img src={six} alt="Profile Icon 6"/>
                     </button>
                 </div>
             </div>

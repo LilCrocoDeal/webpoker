@@ -1,5 +1,6 @@
 import json
 
+from OpenSSL.rand import status
 from asgiref.sync import async_to_sync
 from channels.db import database_sync_to_async
 from channels.generic.websocket import AsyncWebsocketConsumer
@@ -225,9 +226,17 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     async def form_players_query(self, event):
         if event['event'] == 'normal':
-            self.players_query = await self.get_turn_order(event['lobby_id'])
+            turn_order = await self.get_turn_order(event['lobby_id'])
+            if turn_order is not None:
+                self.players_query = turn_order
+            else:
+                self.players_query = None
         else:
-            self.players_query = await self.get_turn_order(event['lobby_id'], user_id=event['user_id'])
+            turn_order = await self.get_turn_order(event['lobby_id'], user_id=event['user_id'])
+            if turn_order is not None:
+                self.players_query = turn_order
+            else:
+                self.players_query = None
 
     async def action_response(self, event):
         await self.send(text_data=json.dumps({
@@ -249,10 +258,16 @@ class GameConsumer(AsyncWebsocketConsumer):
             asyncio.create_task(self.waiting_for_player_end_turn(player, event['lobby_id']))
 
         except IndexError:
-            self.players_query = await self.get_turn_order(event['lobby_id'])
-            await self.send(text_data=json.dumps({
-                'event': 'end_stage',
-            }))
+            turn_order = await self.get_turn_order(event['lobby_id'])
+            if turn_order is not None:
+                self.players_query = turn_order
+                await self.send(text_data=json.dumps({
+                    'event': 'end_stage',
+                }))
+            else:
+                pass
+        except AttributeError:
+            pass
 
     async def send_end_game(self, event):
         result = await self.get_last_players_standing_hands(event['winners'])
@@ -394,30 +409,66 @@ class GameConsumer(AsyncWebsocketConsumer):
 
     @database_sync_to_async
     def get_turn_order(self, lobby_id, user_id=None):
-        lobby = Lobbies.objects.get(lobby_id=lobby_id)
-        active_players = (Players.objects.filter(lobby_id=lobby)
-                          .exclude(Q(status='non_active') | Q(status='ready') | Q(status='all_in'))
-                          .order_by('seating_position'))
-
         if user_id is not None:
+            lobby = Lobbies.objects.get(lobby_id=lobby_id)
+            active_players = (Players.objects.filter(lobby_id=lobby)
+                              .exclude(Q(status='non_active') | Q(status='ready') | Q(status='all_in'))
+                              .order_by('seating_position'))
+
+            if active_players.count() == 0 and Players.objects.filter(lobby_id=lobby, status='all_in').exists():
+                winners = async_to_sync(self.end_game)(user_id, status='few_players')
+                async_to_sync(self.channel_layer.group_send)(
+                    self.lobby_group_name,
+                    {
+                        'type': 'send_end_game',
+                        'winners': winners,
+                    }
+                )
+                return None
+
             player_with_turn = Players.objects.get(user_id=User.objects.get(id=user_id)).seating_position
 
-        else:
-            player_with_turn = LobbyInfo.objects.get(lobby_id=lobby).player_with_BB
+            first_part = list(active_players.filter(seating_position__gte=player_with_turn)
+                              .values_list('user_id', flat=True))
+            second_part = list(active_players.filter(seating_position__lt=player_with_turn)
+                               .values_list('user_id', flat=True))
+            result = list(reversed(first_part + second_part))
 
-        first_part = list(active_players.filter(seating_position__gte=player_with_turn)
-                          .values_list('user_id', flat=True))
-        second_part = list(active_players.filter(seating_position__lt=player_with_turn)
-                           .values_list('user_id', flat=True))
-        result = list(reversed(first_part + second_part))
-
-        if user_id is not None:
             try:
                 result.remove(user_id)
             except ValueError:
                 pass
 
-        return result
+            return result
+
+        else:
+            lobby = Lobbies.objects.get(lobby_id=lobby_id)
+            active_players = (Players.objects.filter(lobby_id=lobby)
+                              .exclude(Q(status='non_active') | Q(status='ready') | Q(status='all_in'))
+                              .order_by('seating_position'))
+
+            if Players.objects.filter(lobby_id=lobby, status='all_in').exists() and active_players.count() <= 1:
+                winners = async_to_sync(self.end_game)(Players.objects.filter(lobby_id=lobby)[0].user_id.id,
+                                                       status='few_players')
+                async_to_sync(self.channel_layer.group_send)(
+                    self.lobby_group_name,
+                    {
+                        'type': 'send_end_game',
+                        'winners': winners,
+                    }
+                )
+                return None
+
+            player_with_turn = LobbyInfo.objects.get(lobby_id=lobby).player_with_BB
+
+            first_part = list(active_players.filter(seating_position__gte=player_with_turn)
+                              .values_list('user_id', flat=True))
+            second_part = list(active_players.filter(seating_position__lt=player_with_turn)
+                               .values_list('user_id', flat=True))
+
+            result = list(reversed(first_part + second_part))
+
+            return result
 
     @database_sync_to_async
     def player_action_db(self, user_id, action):
@@ -619,6 +670,7 @@ class GameConsumer(AsyncWebsocketConsumer):
                     user_win.save()
 
             lobby_info.round_stage = 'end_game'
+            lobby_info.round_bank = 0
             lobby_info.save()
 
             return winners
@@ -664,9 +716,8 @@ class GameConsumer(AsyncWebsocketConsumer):
     @database_sync_to_async
     def get_last_players_standing_hands(self, winners):
         lobby = Players.objects.get(user_id=User.objects.get(id=winners[0])).lobby_id
-        lobby_info = LobbyInfo.objects.get(lobby_id=lobby)
 
-        result = {'last_players': [], 'winners': winners, 'gained_cash': lobby_info.round_bank // len(winners)}
+        result = {'last_players': [], 'winners': winners}
 
         for player in Players.objects.filter(lobby_id=lobby).exclude(Q(status='non_active') | Q(status='ready')):
             result['last_players'].append({'player': player.user_id.id, 'hand': player.current_hand})
